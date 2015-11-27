@@ -31,15 +31,13 @@ class ModelAction:
 
 class CreateModelAction(ModelAction):
     def execute(self):
-        try:
-            filter_by = {self.match_field_name: self.fields.get(self.match_field_name)}
-            self.model.objects.get(**filter_by)
+        if self.find_objects().exists():
             # already exists, return None
             return None
-        except ObjectDoesNotExist:
-            obj = self.model(**self.fields)
-            obj.save()
-            return obj
+
+        obj = self.model(**self.fields)
+        obj.save()
+        return obj
 
 
 class UpdateModelAction(ModelAction):
