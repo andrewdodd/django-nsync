@@ -131,6 +131,12 @@ class TestActionsBuilder(TestCase):
         self.assertIs(False, self.sut.is_externally_mappable(''))
         self.assertIs(False, self.sut.is_externally_mappable("a mappable key"))
 
+    def test_it_considers_non_strings_as_not_externally_mappable(self):
+        self.assertFalse(ActionsBuilder(ANY, ANY).is_externally_mappable(None))
+        self.assertFalse(ActionsBuilder(ANY, ANY).is_externally_mappable(0))
+        self.assertFalse(ActionsBuilder(ANY, ANY).is_externally_mappable(1))
+        self.assertFalse(ActionsBuilder(ANY, ANY).is_externally_mappable(ANY))
+
     def test_it_considers_non_blank_strings_as_externally_mappable(self):
         self.assertTrue(ActionsBuilder(ANY, ANY).is_externally_mappable('a mappable key'))
 

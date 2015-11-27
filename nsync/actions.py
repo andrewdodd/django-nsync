@@ -104,7 +104,16 @@ class ActionsBuilder:
         self.external_system = external_system
 
     def is_externally_mappable(self, external_key):
-        return self.external_system is not None and str.strip(external_key) is not ''
+        if self.external_system is None:
+            return False
+
+        if external_key is None:
+            return False
+
+        if not isinstance(external_key, str):
+            return False
+
+        return external_key.strip() is not ''
 
     def from_dict(self, raw_values):
         if not raw_values:
