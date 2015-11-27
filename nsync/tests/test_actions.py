@@ -5,6 +5,34 @@ from nsync.actions import CreateModelAction, UpdateModelAction, DeleteModelActio
 
 from nsync.tests.models import TestPerson
 
+class TestEncodedSyncActions(TestCase):
+    def test_sync_actions_raises_error_if_action_includes_create_and_delete(self):
+        with self.assertRaises(ValueError):
+            EncodedSyncActions(create=True, delete=True)
+
+    def test_sync_actions_raises_error_if_action_includes_update_and_delete(self):
+        with self.assertRaises(ValueError):
+            EncodedSyncActions(update=True, delete=True)
+
+    def test_it_encodes_as_expected(self):
+        self.assertEqual('c', EncodedSyncActions(create=True).encode())
+        self.assertEqual('u', EncodedSyncActions(update=True).encode())
+        self.assertEqual('u*', EncodedSyncActions(update=True, force=True).encode())
+        self.assertEqual('d', EncodedSyncActions(delete=True).encode())
+        self.assertEqual('d*', EncodedSyncActions(delete=True, force=True).encode())
+
+    def test_it_is_case_insensitive_when_decoding(self):
+        self.assertTrue(EncodedSyncActions.decode('c').create)
+        self.assertTrue(EncodedSyncActions.decode('C').create)
+        self.assertTrue(EncodedSyncActions.decode('u').update)
+        self.assertTrue(EncodedSyncActions.decode('U').update)
+        self.assertTrue(EncodedSyncActions.decode('d').delete)
+        self.assertTrue(EncodedSyncActions.decode('D').delete)
+
+    def test_parse_actions_returns_impotent_object_if_no_actions_provided(self):
+        pass #self.assertTrue(EncodedSyncActions.parse_actions('').is_impotent())
+
+
 class TestModelAction(TestCase):
     def test_creating_without_a_model_raises_error(self):
         with self.assertRaises(ValueError):
@@ -122,30 +150,8 @@ class TestCreateModelAction(TestCase):
         self.assertEqual('Smith', result.last_name)
         self.assertEqual(30, result.age)
      
-class TestEncodedSyncActions(TestCase):
-    def test_sync_actions_raises_error_if_action_includes_create_and_delete(self):
-        with self.assertRaises(ValueError):
-            EncodedSyncActions(create=True, delete=True)
 
-    def test_sync_actions_raises_error_if_action_includes_update_and_delete(self):
-        with self.assertRaises(ValueError):
-            EncodedSyncActions(update=True, delete=True)
 
-    def test_it_encodes_as_expected(self):
-        self.assertEqual('c', EncodedSyncActions(create=True).encode())
-        self.assertEqual('u', EncodedSyncActions(update=True).encode())
-        self.assertEqual('u*', EncodedSyncActions(update=True, force=True).encode())
-        self.assertEqual('d', EncodedSyncActions(delete=True).encode())
-        self.assertEqual('d*', EncodedSyncActions(delete=True, force=True).encode())
 
-    def test_it_is_case_insensitive_when_decoding(self):
-        self.assertTrue(EncodedSyncActions.decode('c').create)
-        self.assertTrue(EncodedSyncActions.decode('C').create)
-        self.assertTrue(EncodedSyncActions.decode('u').update)
-        self.assertTrue(EncodedSyncActions.decode('U').update)
-        self.assertTrue(EncodedSyncActions.decode('d').delete)
-        self.assertTrue(EncodedSyncActions.decode('D').delete)
 
-    def test_parse_actions_returns_impotent_object_if_no_actions_provided(self):
-        pass #self.assertTrue(EncodedSyncActions.parse_actions('').is_impotent())
 

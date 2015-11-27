@@ -1,4 +1,4 @@
-
+from django.core.exceptions import ObjectDoesNotExist
 #from nsync.models import ExternalSystem, ExternalReferenceHandler
 
 class ModelAction:
@@ -28,7 +28,6 @@ class ModelAction:
     def execute(self):
         pass
         
-from django.core.exceptions import ObjectDoesNotExist
 
 class CreateModelAction(ModelAction):
     def execute(self):
