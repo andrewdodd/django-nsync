@@ -54,7 +54,8 @@ class UpdateModelAction(ModelAction):
             return None
 
 class DeleteModelAction(ModelAction):
-    pass
+    def execute(self):
+        self.find_objects().delete()
 
 class ActionsBuilder:
     action_flags_label = 'action_flags'

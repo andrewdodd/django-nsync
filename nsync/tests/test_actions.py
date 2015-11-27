@@ -173,10 +173,26 @@ class TestUpdateModelAction(TestCase):
         self.assertEquals('Smith', john.last_name)
 
     # TODO Review this behaviour?
-    def tests_including_extra_parameters_has_no_effect(self):
+    def test_including_extra_parameters_has_no_effect(self):
         john = TestPerson.objects.create(first_name='John')
         sut = UpdateModelAction(TestPerson, 'first_name', 
                 {'first_name': 'John', 'totally_never_going_to_be_a_field': 'Smith'})
         result = sut.execute()
         self.assertEquals(john, result)
+
+
+class TestDeleteModelAction(TestCase):
+    def test_no_objects_are_deleted_if_none_are_matched(self):
+        john = TestPerson.objects.create(first_name='John')
+        DeleteModelAction(TestPerson, 'first_name', {'first_name': 'A non-matching name'}).execute()
+        self.assertIn(john, TestPerson.objects.all())
+
+    def test_only_objects_with_matching_fields_are_deleted(self):
+        TestPerson.objects.create(first_name='John')
+        TestPerson.objects.create(first_name='Jack')
+        TestPerson.objects.create(first_name='Jill')
+        self.assertEqual(3, TestPerson.objects.count())
+
+        DeleteModelAction(TestPerson, 'first_name', {'first_name': 'Jack'}).execute()
+        self.assertFalse(TestPerson.objects.filter(first_name='Jack').exists())
 
