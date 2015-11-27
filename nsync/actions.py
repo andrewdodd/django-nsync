@@ -28,9 +28,21 @@ class ModelAction:
     def execute(self):
         pass
         
+from django.core.exceptions import ObjectDoesNotExist
 
 class CreateModelAction(ModelAction):
-    pass
+    def execute(self):
+        try:
+            filter_by = {self.match_field_name: self.fields.get(self.match_field_name)}
+            self.model.objects.get(**filter_by)
+            # already exists, return None
+            return None
+        except ObjectDoesNotExist:
+            obj = self.model(**self.fields)
+            obj.save()
+            return obj
+
+
 class UpdateModelAction(ModelAction):
     pass
 class DeleteModelAction(ModelAction):

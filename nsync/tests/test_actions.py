@@ -84,6 +84,44 @@ class TestActionsBuilder(TestCase):
         self.assertEqual(2, len(result))
 
 
+class TestCreateModelAction(TestCase):
+    def test_it_creates_an_object(self):
+        sut = CreateModelAction(TestPerson, 'first_name', {'first_name': 'John', 'last_name': 'Smith'})
+        sut.execute()
+        self.assertEqual(1, TestPerson.objects.count())
+
+    def test_it_returns_the_created_object(self):
+        sut = CreateModelAction(TestPerson, 'first_name', {'first_name': 'John', 'last_name': 'Smith'})
+        result = sut.execute()
+        self.assertEqual(TestPerson.objects.first(), result)
+
+    def test_it_does_not_create_if_object_already_exists(self):
+        TestPerson.objects.create(first_name='John', last_name='Smith')
+        sut = CreateModelAction(TestPerson, 'first_name', {'first_name': 'John', 'last_name': 'Smith'})
+        sut.execute()
+        self.assertEqual(1, TestPerson.objects.count())
+
+    def test_it_does_not_modify_existing_object_if_object_already_exists(self):
+        TestPerson.objects.create(first_name='John', last_name='Jackson')
+        sut = CreateModelAction(TestPerson, 'first_name', {'first_name': 'John', 'last_name': 'Smith'})
+        sut.execute()
+        self.assertEqual(1, TestPerson.objects.count())
+        self.assertEquals('Jackson', TestPerson.objects.first().last_name)
+
+    def test_it_does_not_return_the_object_if_it_did_not_create_it(self):
+        TestPerson.objects.create(first_name='John', last_name='Smith')
+        sut = CreateModelAction(TestPerson, 'first_name', {'first_name': 'John', 'last_name': 'Smith'})
+        result = sut.execute()
+        self.assertIsNone(result)
+
+    def test_it_creates_an_object_with_all_included_fields(self):
+        sut = CreateModelAction(TestPerson, 'first_name', 
+                {'first_name': 'John', 'last_name': 'Smith', 'age': 30})
+        result = sut.execute()
+        self.assertEqual('John', result.first_name)
+        self.assertEqual('Smith', result.last_name)
+        self.assertEqual(30, result.age)
+     
 class TestEncodedSyncActions(TestCase):
     def test_sync_actions_raises_error_if_action_includes_create_and_delete(self):
         with self.assertRaises(ValueError):
