@@ -57,13 +57,23 @@ class DeleteModelAction(ModelAction):
     def execute(self):
         self.find_objects().delete()
 
+class AlignExternalReferenceAction:
+    pass
+
+class DeleteExternalReferenceAction:
+    pass
+
 class ActionsBuilder:
     action_flags_label = 'action_flags'
     match_field_name_label = 'match_field_name'
     external_key_label = 'external_key'
 
-    def __init__(self, model):
+    def __init__(self, model, external_system=None):
         self.model = model
+        self.external_system = external_system
+
+    def is_externally_mappable(self, external_key):
+        return self.external_system is not None and str.strip(external_key) is not ''
 
     def from_dict(self, raw_values):
         if not raw_values:
@@ -77,21 +87,31 @@ class ActionsBuilder:
 
         return self.build(encoded_actions, match_field_name, external_system_key, raw_values)
 
-    def build(self, encoded_actions, match_field_name, external_system_key, raw_values):
+    def build(self, encoded_actions, match_field_name, external_system_key, fields):
 
         actions = []
 
+        if encoded_actions.is_impotent():
+            actions.append(ModelAction(self.model, match_field_name, fields))
+
+        if encoded_actions.delete:
+            actions.append(DeleteModelAction(self.model, match_field_name, fields))
+            if self.is_externally_mappable(external_system_key):
+                actions.append(DeleteExternalReferenceAction(
+                    self.external_system, external_system_key))
 
         if encoded_actions.create:
-            actions.append(CreateModelAction(self.model, match_field_name, raw_values))
+            action = CreateModelAction(self.model, match_field_name, fields)
+            if self.is_externally_mappable(external_system_key):
+                action = AlignExternalReferenceAction(self.external_system, self.model,
+                        external_system_key, action)
+            actions.append(action)
         if encoded_actions.update:
-            actions.append(UpdateModelAction(self.model, match_field_name, raw_values))
-        if encoded_actions.delete:
-            actions.append(DeleteModelAction(self.model, match_field_name, raw_values))
-
-        if not actions:
-            actions.append(ModelAction(self.model, match_field_name, raw_values))
-
+            action = UpdateModelAction(self.model, match_field_name, fields)
+            if self.is_externally_mappable(external_system_key):
+                action = AlignExternalReferenceAction(self.external_system, self.model,
+                        external_system_key, action)
+            actions.append(action)
 
         return actions
 
@@ -118,8 +138,8 @@ class EncodedSyncActions:
     def __str__(self):
         return "SyncActions {}".format(self.encode())
 
-        def is_impotent(self):
-            return not (self.create or self.update or self.delete)
+    def is_impotent(self):
+        return not (self.create or self.update or self.delete)
 
     @staticmethod
     def decode(action_flags):

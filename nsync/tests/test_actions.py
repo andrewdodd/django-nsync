@@ -124,6 +124,52 @@ class TestActionsBuilder(TestCase):
         result = self.sut.from_dict(self.dict_with_defaults)
         self.assertEqual(2, len(result))
 
+    def test_it_considers_nothing_externally_mappable_without_external_system(self):
+        self.assertIs(False, self.sut.is_externally_mappable(''))
+        self.assertIs(False, self.sut.is_externally_mappable("a mappable key"))
+
+    def test_it_considers_non_blank_strings_as_externally_mappable(self):
+        self.assertTrue(ActionsBuilder(ANY, ANY).is_externally_mappable('a mappable key'))
+
+
+    @patch('nsync.actions.AlignExternalReferenceAction')
+    @patch('nsync.actions.CreateModelAction')
+    def test_it_wraps_action_in_align_external_reference_action_for_create_if_externally_mappable(self, \
+            CreateModelAction, AlignExternalReferenceAction):
+        external_system_mock = MagicMock()
+        model_mock = MagicMock()
+        sut = ActionsBuilder(model_mock, external_system_mock)
+        result = sut.build(EncodedSyncActions(create=True), 'field', 'external_key', {'field': 'value'})
+        AlignExternalReferenceAction.assert_called_with(
+                external_system_mock, model_mock, 
+                'external_key', CreateModelAction.return_value)
+        self.assertIn(AlignExternalReferenceAction.return_value, result)
+        self.assertNotIn(CreateModelAction.return_value, result)
+
+    @patch('nsync.actions.AlignExternalReferenceAction')
+    @patch('nsync.actions.UpdateModelAction')
+    def test_it_wraps_action_in_align_external_reference_action_for_update_if_externally_mappable(self, \
+            UpdateModelAction, AlignExternalReferenceAction):
+        external_system_mock = MagicMock()
+        model_mock = MagicMock()
+        sut = ActionsBuilder(model_mock, external_system_mock)
+        result = sut.build(EncodedSyncActions(update=True), 'field', 'external_key', {'field': 'value'})
+        AlignExternalReferenceAction.assert_called_with(
+                external_system_mock, model_mock, 
+                'external_key', UpdateModelAction.return_value)
+        self.assertIn(AlignExternalReferenceAction.return_value, result)
+        self.assertNotIn(UpdateModelAction.return_value, result)
+        
+    @patch('nsync.actions.DeleteExternalReferenceAction')
+    def test_it_creates_delete_external_reference_and_delete_action_for_delete_if_externally_mappable(self, DeleteExternalReferenceAction):
+        external_system_mock = MagicMock()
+        model_mock = MagicMock()
+        sut = ActionsBuilder(model_mock, external_system_mock)
+        result = sut.build(EncodedSyncActions(delete=True), 'field', 'external_key', {'field': 'value'})
+        DeleteExternalReferenceAction.assert_called_with(
+                external_system_mock, 'external_key')
+        self.assertIn(DeleteExternalReferenceAction.return_value, result)
+        self.assertEqual(2, len(result))
 
 class TestCreateModelAction(TestCase):
     def test_it_creates_an_object(self):
