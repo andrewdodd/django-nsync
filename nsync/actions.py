@@ -1,9 +1,5 @@
-from django.core.management.base import BaseCommand, CommandError
-from django.apps.registry import apps
-import os
-import csv
 
-from nsync.models import ExternalSystem, ExternalReferenceHandler
+#from nsync.models import ExternalSystem, ExternalReferenceHandler
 
 class ModelAction:
     def __init__(self, model, match_field_name, fields={}):

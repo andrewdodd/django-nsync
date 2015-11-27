@@ -14,6 +14,10 @@ class TestPerson(models.Model):
     )
     age = models.IntegerField(blank=True, null=True)
 
+    def __str__(self):
+        return '{}:{} {} - {}'.format(self.id, \
+                self.first_name, self.last_name, self.age)
+
 class TestHouse(models.Model):
     address = models.CharField(max_length=100)
     country = models.CharField(max_length=100, blank=True)

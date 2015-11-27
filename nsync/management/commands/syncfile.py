@@ -5,7 +5,8 @@ import csv
 import argparse
 
 from nsync.models import ExternalSystem, ExternalReferenceHandler
-from nsync.sync import SyncInfo, SyncRecord, ActionsBuilder
+from nsync.sync import SyncInfo, SyncRecord
+from nsync.actions import ActionsBuilder
 
 class Command(BaseCommand):
     help = 'Sync info from one file'

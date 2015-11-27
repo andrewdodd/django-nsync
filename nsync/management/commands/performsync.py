@@ -4,7 +4,8 @@ import os
 import csv
 
 from nsync.models import ExternalSystem, ExternalReferenceHandler
-from nsync.sync import SyncInfo, SyncRecord, EncodedSyncActions
+from nsync.sync import SyncInfo, SyncRecord
+from nsync.actions import EncodedSyncActions
 
 class Command(BaseCommand):
     help = 'Prints the people'
