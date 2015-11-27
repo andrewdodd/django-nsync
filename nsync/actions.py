@@ -41,7 +41,18 @@ class CreateModelAction(ModelAction):
 
 
 class UpdateModelAction(ModelAction):
-    pass
+    def execute(self):
+        try:
+            obj = self.find_objects().get()
+
+            for field, value in self.fields.items():
+                setattr(obj, field, value)
+            obj.save()
+
+            return obj
+        except ObjectDoesNotExist:
+            return None
+
 class DeleteModelAction(ModelAction):
     pass
 

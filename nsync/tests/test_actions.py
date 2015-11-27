@@ -151,7 +151,32 @@ class TestCreateModelAction(TestCase):
         self.assertEqual(30, result.age)
      
 
+class TestUpdateModelAction(TestCase):
+    def test_it_returns_the_object_even_if_nothing_updated(self):
+        john = TestPerson.objects.create(first_name='John')
+        sut = UpdateModelAction(TestPerson, 'first_name', {'first_name': 'John'})
+        result = sut.execute()
+        self.assertEquals(john, result)
 
+    def test_it_returns_nothing_if_object_does_not_exist(self):
+        sut = UpdateModelAction(TestPerson, 'first_name', {'first_name': 'John', 'last_name': 'Smith'})
+        result = sut.execute()
+        self.assertIsNone(result)
 
+    def test_it_updates_model_with_new_values(self):
+        john = TestPerson.objects.create(first_name='John')
+        self.assertEqual('', john.last_name)
 
+        sut = UpdateModelAction(TestPerson, 'first_name', {'first_name': 'John', 'last_name': 'Smith'})
+        sut.execute()
+        john.refresh_from_db()
+        self.assertEquals('Smith', john.last_name)
+
+    # TODO Review this behaviour?
+    def tests_including_extra_parameters_has_no_effect(self):
+        john = TestPerson.objects.create(first_name='John')
+        sut = UpdateModelAction(TestPerson, 'first_name', 
+                {'first_name': 'John', 'totally_never_going_to_be_a_field': 'Smith'})
+        result = sut.execute()
+        self.assertEquals(john, result)
 
