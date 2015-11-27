@@ -1,4 +1,6 @@
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.contenttypes.fields import ContentType
+from .models import ExternalKeyMapping
 #from nsync.models import ExternalSystem, ExternalReferenceHandler
 
 class ModelAction:
@@ -58,10 +60,39 @@ class DeleteModelAction(ModelAction):
         self.find_objects().delete()
 
 class AlignExternalReferenceAction:
-    pass
+    def __init__(self, external_system, model, external_key, action):
+        self.external_system = external_system
+        self.external_key = external_key
+        self.model = model
+        self.action = action
+
+    def execute(self):
+        model_obj =  self.action.execute()
+
+        if model_obj:
+            try:
+                mapping = ExternalKeyMapping.objects.get(
+                    external_system=self.external_system,
+                    external_key=self.external_key)
+            except ExternalKeyMapping.DoesNotExist:
+                mapping = ExternalKeyMapping(
+                            external_system=self.external_system,
+                            external_key=self.external_key)
+            mapping.content_type = ContentType.objects.get_for_model(self.model)
+            mapping.content_object=model_obj
+            mapping.object_id=model_obj.id
+            mapping.save()
+
+        return model_obj
 
 class DeleteExternalReferenceAction:
-    pass
+    def __init__(self, external_system, external_key):
+        self.external_system = external_system
+        self.external_key = external_key
+
+    def execute(self):
+        ExternalKeyMapping.objects.filter(external_system=self.external_system,
+                external_key=self.external_key).delete()
 
 class ActionsBuilder:
     action_flags_label = 'action_flags'

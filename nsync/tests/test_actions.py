@@ -1,8 +1,11 @@
 from django.test import TestCase
 from unittest.mock import MagicMock, patch, ANY
 from nsync.actions import EncodedSyncActions, ActionsBuilder, ModelAction
-from nsync.actions import CreateModelAction, UpdateModelAction, DeleteModelAction
+from nsync.actions import CreateModelAction, UpdateModelAction, DeleteModelAction, DeleteExternalReferenceAction, \
+        AlignExternalReferenceAction
 
+from django.contrib.contenttypes.fields import ContentType
+from nsync.models import ExternalSystem, ExternalKeyMapping
 from nsync.tests.models import TestPerson
 
 class TestEncodedSyncActions(TestCase):
@@ -254,4 +257,83 @@ class TestDeleteModelAction(TestCase):
 
         DeleteModelAction(TestPerson, 'first_name', {'first_name': 'Jack'}).execute()
         self.assertFalse(TestPerson.objects.filter(first_name='Jack').exists())
+
+
+class TestDeleteExternalReferenceAction(TestCase):
+    def test_it_deletes_the_matching_external_reference(self):
+        external_system = ExternalSystem.objects.create(name='System')
+        ExternalKeyMapping.objects.create(external_system=external_system, external_key='Key1',
+                content_type=ContentType.objects.get_for_model(TestPerson),
+                object_id=1)
+        ExternalKeyMapping.objects.create(external_system=external_system, external_key='Key2',
+                content_type=ContentType.objects.get_for_model(TestPerson),
+                object_id=1)
+        ExternalKeyMapping.objects.create(external_system=external_system, external_key='Key3',
+                content_type=ContentType.objects.get_for_model(TestPerson),
+                object_id=1)
+        self.assertEqual(3, ExternalKeyMapping.objects.count())
+        DeleteExternalReferenceAction(external_system, 'Key2').execute()
+        self.assertEqual(2, ExternalKeyMapping.objects.count())
+        self.assertFalse(ExternalKeyMapping.objects.filter(external_system=external_system, 
+            external_key='Key2').exists())
+        
+class TestAlignExternalReferenceAction(TestCase):
+    def setUp(self):
+        self.external_system = ExternalSystem.objects.create(name='System')
+        self.john = TestPerson.objects.create(first_name='John')
+
+
+    def test_it_creates_a_new_key_mapping_on_success_of_inner_action_if_one_not_found(self):
+        mock_action = MagicMock()
+        mock_action.execute.return_value = self.john
+
+        self.assertEqual(0, ExternalKeyMapping.objects.count())
+        sut = AlignExternalReferenceAction(self.external_system,
+                TestPerson, 'PersonJohn', mock_action)
+        result = sut.execute()
+
+        self.assertEqual(1, ExternalKeyMapping.objects.count())
+        mapping = ExternalKeyMapping.objects.first()
+        self.assertEqual('PersonJohn', mapping.external_key)
+        self.assertEqual(self.john, mapping.content_object)
+
+
+    def test_it_updates_existing_key_mapping_on_success_of_inner_action(self):
+        jill = TestPerson.objects.create(first_name='Jill')
+        person_mapping = ExternalKeyMapping.objects.create(
+                external_system=self.external_system,
+                external_key='Person123',
+                content_type = ContentType.objects.get_for_model(TestPerson),
+                content_object=jill,
+                object_id=jill.id)
+        self.assertEqual(1, ExternalKeyMapping.objects.count())
+        self.assertEqual(jill, person_mapping.content_object)
+        
+        mock_action = MagicMock()
+        mock_action.execute.return_value = self.john
+        sut = AlignExternalReferenceAction(self.external_system,
+                TestPerson, 'Person123', mock_action)
+        result = sut.execute()
+
+        self.assertEqual(1, ExternalKeyMapping.objects.count())
+        mapping = ExternalKeyMapping.objects.first()
+        self.assertEqual(self.john, mapping.content_object)
+
+
+    def test_it_does_nothing_if_inner_action_fails(self):
+        mock_action = MagicMock()
+        mock_action.execute.return_value = None
+        sut = AlignExternalReferenceAction(self.external_system,
+                ANY, ANY, mock_action)
+        result = sut.execute()
+        mock_action.execute.assert_called_with()
+        self.assertEqual(0, ExternalKeyMapping.objects.count())
+
+    @patch('nsync.actions.ExternalKeyMapping')
+    def test_it_passes_the_result_of_the_action_back(self, ExternalKeyMapping):
+        mock_action = MagicMock()
+        sut = AlignExternalReferenceAction(self.external_system,
+                TestPerson, ANY, mock_action)
+        result = sut.execute()
+        self.assertEqual(mock_action.execute.return_value, result)
 
