@@ -64,6 +64,27 @@ class TestActionsBuilder(TestCase):
                 'match_field_name': 'field1',
                 'field1': ''}
 
+    @patch('nsync.actions.EncodedSyncActions')
+    def test_from_dict_maps_to_build_correctly(self, EncodedSyncActions):
+        action_flags_mock = MagicMock()
+        match_field_name_mock = MagicMock()
+        external_key_mock = MagicMock()
+        
+        with patch.object(self.sut, 'build') as build_method:
+            result = self.sut.from_dict({
+                'action_flags': action_flags_mock,
+                'match_field_name': match_field_name_mock,
+                'external_key': external_key_mock,
+                'other_key': 'value'
+                })
+            EncodedSyncActions.decode.assert_called_with(action_flags_mock)
+            build_method.assert_called_with(
+                    EncodedSyncActions.decode.return_value,
+                    match_field_name_mock,
+                    external_key_mock,
+                    {'other_key': 'value'})
+            self.assertEqual(build_method.return_value, result)
+
     def test_returns_an_empty_list_if_no_actions_in_input(self):
         self.assertEqual([], self.sut.from_dict(None))
 
@@ -75,15 +96,9 @@ class TestActionsBuilder(TestCase):
         with self.assertRaises(KeyError):
             self.sut.from_dict({'action_flags':''})
 
-    def xtest_it_can_be_constructed_with_a_different_action_flag_key(self):
-        pass # feature creep, not needed now
-
-    def test_it_looks_for_external_key(self):
-        pass # perhaps return to this?
-
     @patch('nsync.actions.ModelAction')
     def test_it_creates_a_base_model_action_if_no_action_flags_are_included(self, ModelAction):
-        result = self.sut.from_dict(self.dict_with_defaults)
+        result = self.sut.build(EncodedSyncActions(), 'field1', None, {'field1': ''})
         ModelAction.assert_called_with(self.model, 'field1', {'field1': ''})
         self.assertIn(ModelAction.return_value, result)
 
@@ -96,15 +111,13 @@ class TestActionsBuilder(TestCase):
             self.assertIn(TargetActionClass.return_value, result)
 
         test_inputs = [
-                (EncodedSyncActions(create=True).encode(), CreateModelAction),
-                (EncodedSyncActions(update=True).encode(), UpdateModelAction),
-                (EncodedSyncActions(delete=True).encode(), DeleteModelAction)]
+                (EncodedSyncActions(create=True), CreateModelAction),
+                (EncodedSyncActions(update=True), UpdateModelAction),
+                (EncodedSyncActions(delete=True), DeleteModelAction)]
 
-        for test_input in test_inputs:
-            input_values = dict(self.dict_with_defaults)
-            input_values['action_flags']= test_input[0]
-            result = self.sut.from_dict(input_values)
-            assert_for_target_class(test_input[1])
+        for (encoded_action, resulting_action) in test_inputs:
+            result = self.sut.build(encoded_action, 'field1', ANY, {'field1': ''})
+            assert_for_target_class(resulting_action)
 
     def test_it_creates_two_actions_if_create_and_update_action_flags_are_included(self):
         self.dict_with_defaults['action_flags'] = EncodedSyncActions(create=True, update=True).encode()

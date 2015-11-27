@@ -73,9 +73,14 @@ class ActionsBuilder:
         match_field_name = raw_values.pop(self.match_field_name_label)
         external_system_key = raw_values.pop(self.external_key_label, None)
 
+        encoded_actions = EncodedSyncActions.decode(action_flags)
+
+        return self.build(encoded_actions, match_field_name, external_system_key, raw_values)
+
+    def build(self, encoded_actions, match_field_name, external_system_key, raw_values):
+
         actions = []
 
-        encoded_actions = EncodedSyncActions.decode(action_flags)
 
         if encoded_actions.create:
             actions.append(CreateModelAction(self.model, match_field_name, raw_values))
@@ -89,14 +94,7 @@ class ActionsBuilder:
 
 
         return actions
-        #actions = []
-        #
-        #encoded_actions = EncodedSyncActions.parse_actions(d.pop('action_flags'))
 
-        #if encoded_actions.create:
-        #    actions.append(CreateAction(d.pop('match_field_name'), d))
-
-        #return actions
 
 class EncodedSyncActions:
     def __init__(self, create=False, update=False, delete=False, force=False):
