@@ -6,7 +6,7 @@ from nsync.actions import CreateModelAction, UpdateModelAction, DeleteModelActio
 
 from django.contrib.contenttypes.fields import ContentType
 from nsync.models import ExternalSystem, ExternalKeyMapping
-from nsync.tests.models import TestPerson
+from nsync.tests.models import TestPerson, TestHouse
 
 class TestEncodedSyncActions(TestCase):
     def test_sync_actions_raises_error_if_action_includes_create_and_delete(self):
@@ -55,6 +55,57 @@ class TestModelAction(TestCase):
         found_object = ModelAction(model, 'matchfield', {'matchfield':'value'}).find_objects()
         model.objects.filter.assert_called_once_with(matchfield='value')
         self.assertEqual(found_object, model.objects.filter.return_value)
+
+    def test_update_from_fields_changes_values_on_object(self):
+        john = TestPerson(first_name='John')
+        ModelAction(TestPerson, 'last_name', {'last_name': 'Smith'}).update_from_fields(john)
+        self.assertEqual('Smith', john.last_name)
+            
+    def test_update_from_fields_updates_related_fields(self):
+        person = TestPerson.objects.create(first_name="Jill", last_name="Jones")
+        house = TestHouse.objects.create(address='Bottom of the hill')
+        fields = {'address':'Bottom of the hill', 'owner=>first_name':'Jill'}
+
+        sut = ModelAction(TestHouse, 'address', fields)
+        sut.update_from_fields(house)
+        self.assertEqual(person, house.owner)
+
+    @patch('nsync.actions.logger')
+    def test_related_fields_are_not_touched_if_referred_to_object_does_not_exist(self, logger):
+        house = TestHouse.objects.create(address='Bottom of the hill')
+        fields = {'address':'Bottom of the hill', 'owner=>last_name':'Jones'}
+
+        sut = ModelAction(TestHouse, 'address', fields)
+        sut.update_from_fields(house)
+        self.assertEqual(None, house.owner)
+        logger.info.assert_called_with(ANY)
+
+    @patch('nsync.actions.logger')
+    def test_related_fields_are_not_touched_if_referred_to_object_ambiguous(self, logger):
+        TestPerson.objects.create(first_name="Jill", last_name="Jones")
+        TestPerson.objects.create(first_name="Jack", last_name="Jones")
+        house = TestHouse.objects.create(address='Bottom of the hill')
+        fields = {'address':'Bottom of the hill', 'owner=>last_name':'Jones'}
+        sut = ModelAction(TestHouse, 'address', fields)
+        sut.update_from_fields(house)
+        self.assertEqual(None, house.owner)
+        logger.info.assert_called_with(ANY)
+        
+    def test_related_fields_update_uses_all_available_filters(self):
+        person = TestPerson.objects.create(first_name="John", last_name="Johnson")
+        TestPerson.objects.create(first_name="Jack", last_name="Johnson")
+        TestPerson.objects.create(first_name="John", last_name="Jackson")
+        TestPerson.objects.create(first_name="Jack", last_name="Jackson")
+
+        house = TestHouse.objects.create(address='Bottom of the hill')
+        fields = {
+                'address':'Bottom of the hill', 
+                'owner=>first_name':'John',
+                'owner=>last_name':'Johnson'}
+        sut = ModelAction(TestHouse, 'address', fields)
+        sut.update_from_fields(house)
+        self.assertEqual(person, house.owner)
+        
             
 
 class TestActionsBuilder(TestCase):

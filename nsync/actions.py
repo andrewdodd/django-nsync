@@ -1,9 +1,17 @@
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist, FieldDoesNotExist
 from django.contrib.contenttypes.fields import ContentType
 from .models import ExternalKeyMapping
 #from nsync.models import ExternalSystem, ExternalReferenceHandler
+from collections import defaultdict
+
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class ModelAction:
+    REFERRED_TO_DELIMITER = '=>'
+
     def __init__(self, model, match_field_name, fields={}):
         if model is None:
             raise ValueError('model cannot be None')
@@ -29,6 +37,34 @@ class ModelAction:
 
     def execute(self):
         pass
+
+    def update_from_fields(self, object):
+        # we need to support referential attributes, so look for them
+        # as we iterate and store them for later
+
+        # We store the referential attributes as a dict of dicts, this way filtering
+        # against many fields is possible
+        referential_attributes = defaultdict(dict)
+        for attribute, value in self.fields.items():
+            if self.REFERRED_TO_DELIMITER in attribute:
+                split_attribute = attribute.split(self.REFERRED_TO_DELIMITER)
+                referential_attributes[split_attribute[0]][split_attribute[1]] = value
+            else:
+                setattr(object, attribute, value)
+
+        for attribute, get_by in referential_attributes.items():
+            try:
+                (field, field_model, direct,  m2m) = object._meta.get_field_by_name(attribute)
+                if direct and field.related_model:
+                    try:
+                        target = field.related_model.objects.get(**get_by)
+                        setattr(object, attribute, target)
+                    except ObjectDoesNotExist as e:
+                        logger.info('Referred to object not found')
+                    except MultipleObjectsReturned as e:
+                        logger.info('Referred to object points to multiple objects')
+            except FieldDoesNotExist as e:
+                pass
         
 
 class CreateModelAction(ModelAction):
@@ -37,7 +73,8 @@ class CreateModelAction(ModelAction):
             # already exists, return None
             return None
 
-        obj = self.model(**self.fields)
+        obj = self.model()
+        self.update_from_fields(obj)
         obj.save()
         return obj
 
@@ -46,9 +83,7 @@ class UpdateModelAction(ModelAction):
     def execute(self):
         try:
             obj = self.find_objects().get()
-
-            for field, value in self.fields.items():
-                setattr(obj, field, value)
+            self.update_from_fields(obj)
             obj.save()
 
             return obj
