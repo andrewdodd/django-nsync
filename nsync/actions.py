@@ -104,11 +104,26 @@ class UpdateModelAction(ModelAction):
             return None
 
 class DeleteIfOnlyReferenceModelAction(ModelAction):
+    """This action only deletes the pointed to object if the key mapping
+       corresponding to 'this' external key it the only one"""
     def __init__(self, external_system, external_key, delete_action):
-        pass
+        self.delete_action = delete_action
+        self.external_key = external_key
+        self.external_system = external_system
 
     def execute(self):
-        self.find_objects().delete()
+        try:
+            obj = self.delete_action.find_objects().get()
+
+            key_mapping = ExternalKeyMapping.objects.get(object_id=obj.id, 
+                    content_type=ContentType.objects.get_for_model(self.delete_action.model),
+                    external_key=self.external_key,
+                    external_system=self.external_system)
+
+            self.delete_action.execute()
+        except ObjectDoesNotExist:
+            return
+
 
 class DeleteModelAction(ModelAction):
     def execute(self):

@@ -2,9 +2,10 @@ from django.test import TestCase
 from unittest.mock import MagicMock, patch, ANY
 from nsync.actions import EncodedSyncActions, ActionsBuilder, ModelAction
 from nsync.actions import CreateModelAction, UpdateModelAction, DeleteModelAction, DeleteExternalReferenceAction, \
-        AlignExternalReferenceAction
+        AlignExternalReferenceAction, DeleteIfOnlyReferenceModelAction
 
 from django.contrib.contenttypes.fields import ContentType
+from django.core.exceptions import ObjectDoesNotExist
 from nsync.models import ExternalSystem, ExternalKeyMapping
 from nsync.tests.models import TestPerson, TestHouse
 
@@ -379,6 +380,74 @@ class TestDeleteModelAction(TestCase):
 
         DeleteModelAction(TestPerson, 'first_name', {'first_name': 'Jack'}).execute()
         self.assertFalse(TestPerson.objects.filter(first_name='Jack').exists())
+
+class TestDeleteIfOnlyReferenceModelAction(TestCase):
+    def setUp(self):
+        self.external_system = ExternalSystem.objects.create(name='System')
+
+    def test_it_does_nothing_if_object_does_not_exist(self):
+        delete_action = MagicMock()
+        delete_action.find_objects.return_value.get.side_effect = ObjectDoesNotExist
+        DeleteIfOnlyReferenceModelAction(ANY, ANY, delete_action).execute()
+        delete_action.find_objects.assert_called_with()
+        delete_action.find_objects.return_value.get.assert_called_with()
+        self.assertFalse(delete_action.execute.called)
+
+    def test_it_does_nothing_if_no_key_mapping_is_found_for_delete_action_target(self):
+        john = TestPerson.objects.create(first_name='John')
+        delete_action = MagicMock()
+        delete_action.model = TestPerson
+        delete_action.find_objects.return_value.get.return_value = john
+        DeleteIfOnlyReferenceModelAction(self.external_system, 'SomeKey', delete_action).execute()
+        self.assertFalse(delete_action.execute.called)
+
+    def test_it_calls_delete_action_if_it_is_the_only_key_mapping(self):
+        john = TestPerson.objects.create(first_name='John')
+        person_mapping = ExternalKeyMapping.objects.create(
+                external_system=self.external_system,
+                external_key='Person123',
+                content_type = ContentType.objects.get_for_model(TestPerson),
+                content_object=john,
+                object_id=john.id)
+        delete_action = MagicMock()
+        delete_action.model = TestPerson
+        delete_action.find_objects.return_value.get.return_value = john
+        DeleteIfOnlyReferenceModelAction(self.external_system, 'Person123', delete_action).execute()
+        delete_action.execute.assert_called_with()
+
+    def test_it_does_not_call_the_delete_action_if_it_is_not_the_key_mapping(self):
+        john = TestPerson.objects.create(first_name='John')
+        person_mapping = ExternalKeyMapping.objects.create(
+                external_system= ExternalSystem.objects.create(label='AlternalSystem'),
+                external_key='Person123',
+                content_type = ContentType.objects.get_for_model(TestPerson),
+                content_object=john,
+                object_id=john.id)
+        delete_action = MagicMock()
+        delete_action.model = TestPerson
+        delete_action.find_objects.return_value.get.return_value = john
+        DeleteIfOnlyReferenceModelAction(self.external_system, 'Person123', delete_action).execute()
+        self.assertFalse(delete_action.execute.called)
+
+    def test_it_does_not_call_the_delete_action_if_there_are_other_mappings(self):
+        john = TestPerson.objects.create(first_name='John')
+        ExternalKeyMapping.objects.create(
+                external_system=self.external_system,
+                external_key='Person123',
+                content_type = ContentType.objects.get_for_model(TestPerson),
+                content_object=john,
+                object_id=john.id)
+        ExternalKeyMapping.objects.create(
+                external_system=ExternalSystem.objects.create(label='OtherSytem'),
+                external_key='Person123',
+                content_type = ContentType.objects.get_for_model(TestPerson),
+                content_object=john,
+                object_id=john.id)
+        delete_action = MagicMock()
+        delete_action.model = TestPerson
+        delete_action.find_objects.return_value.get.return_value = john
+        DeleteIfOnlyReferenceModelAction(self.external_system, 'Person123', delete_action).execute()
+        delete_action.execute.assert_not_called()
 
 
 class TestDeleteExternalReferenceAction(TestCase):
