@@ -89,15 +89,26 @@ class CreateModelAction(ModelAction):
 
 
 class UpdateModelAction(ModelAction):
+    def __init__(self, model, match_field_name, fields={}, force_update=False):
+        super(UpdateModelAction, self).__init__(model, match_field_name, fields)
+        self.force_update = force_update
+
     def execute(self):
         try:
             obj = self.find_objects().get()
-            self.update_from_fields(obj)
+            self.update_from_fields(obj, self.force_update)
             obj.save()
 
             return obj
         except ObjectDoesNotExist:
             return None
+
+class DeleteIfOnlyReferenceModelAction(ModelAction):
+    def __init__(self, external_system, external_key, delete_action):
+        pass
+
+    def execute(self):
+        self.find_objects().delete()
 
 class DeleteModelAction(ModelAction):
     def execute(self):
@@ -179,10 +190,15 @@ class ActionsBuilder:
             actions.append(ModelAction(self.model, match_field_name, fields))
 
         if encoded_actions.delete:
-            actions.append(DeleteModelAction(self.model, match_field_name, fields))
+            action = DeleteModelAction(self.model, match_field_name, fields)
             if self.is_externally_mappable(external_system_key):
+                if not encoded_actions.force:
+                    action = DeleteIfOnlyReferenceModelAction(
+                            self.external_system, external_system_key, action)
                 actions.append(DeleteExternalReferenceAction(
                     self.external_system, external_system_key))
+
+            actions.append(action)
 
         if encoded_actions.create:
             action = CreateModelAction(self.model, match_field_name, fields)
@@ -191,7 +207,7 @@ class ActionsBuilder:
                         external_system_key, action)
             actions.append(action)
         if encoded_actions.update:
-            action = UpdateModelAction(self.model, match_field_name, fields)
+            action = UpdateModelAction(self.model, match_field_name, fields, encoded_actions.force)
             if self.is_externally_mappable(external_system_key):
                 action = AlignExternalReferenceAction(self.external_system, self.model,
                         external_system_key, action)

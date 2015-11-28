@@ -190,22 +190,25 @@ class TestActionsBuilder(TestCase):
         ModelAction.assert_called_with(self.model, 'field1', {'field1': ''})
         self.assertIn(ModelAction.return_value, result)
 
-    @patch('nsync.actions.DeleteModelAction')
-    @patch('nsync.actions.UpdateModelAction')
     @patch('nsync.actions.CreateModelAction')
-    def test_it_calls_the_correct_action_class_for_each_type(self, CreateModelAction, UpdateModelAction, DeleteModelAction):
-        def assert_for_target_class(TargetActionClass):
-            TargetActionClass.assert_called_with(self.model, 'field1', {'field1': ''})
+    def test_it_calls_create_action_with_correct_parameters(self, TargetActionClass):
+        result = self.sut.build(EncodedSyncActions(create=True), 'field', ANY, {'field': ''})
+        TargetActionClass.assert_called_with(self.model, 'field', {'field': ''})
+        self.assertIn(TargetActionClass.return_value, result)
+
+    @patch('nsync.actions.UpdateModelAction')
+    def test_it_calls_update_action_with_correct_parameters(self, TargetActionClass):
+        for actions in [EncodedSyncActions(update=True, force=False),
+                EncodedSyncActions(update=True, force=True)]:
+            result = self.sut.build(actions, 'field', ANY, {'field': ''})
+            TargetActionClass.assert_called_with(self.model, 'field', {'field': ''}, actions.force)
             self.assertIn(TargetActionClass.return_value, result)
 
-        test_inputs = [
-                (EncodedSyncActions(create=True), CreateModelAction),
-                (EncodedSyncActions(update=True), UpdateModelAction),
-                (EncodedSyncActions(delete=True), DeleteModelAction)]
-
-        for (encoded_action, resulting_action) in test_inputs:
-            result = self.sut.build(encoded_action, 'field1', ANY, {'field1': ''})
-            assert_for_target_class(resulting_action)
+    @patch('nsync.actions.DeleteModelAction')
+    def test_it_calls_delete_action_with_correct_parameters(self, TargetActionClass):
+        result = self.sut.build(EncodedSyncActions(delete=True), 'field', ANY, {'field': ''})
+        TargetActionClass.assert_called_with(self.model, 'field', {'field': ''})
+        self.assertIn(TargetActionClass.return_value, result)
 
     def test_it_creates_two_actions_if_create_and_update_action_flags_are_included(self):
         self.dict_with_defaults['action_flags'] = EncodedSyncActions(create=True, update=True).encode()
@@ -224,7 +227,6 @@ class TestActionsBuilder(TestCase):
 
     def test_it_considers_non_blank_strings_as_externally_mappable(self):
         self.assertTrue(ActionsBuilder(ANY, ANY).is_externally_mappable('a mappable key'))
-
 
     @patch('nsync.actions.AlignExternalReferenceAction')
     @patch('nsync.actions.CreateModelAction')
@@ -255,7 +257,7 @@ class TestActionsBuilder(TestCase):
         self.assertNotIn(UpdateModelAction.return_value, result)
         
     @patch('nsync.actions.DeleteExternalReferenceAction')
-    def test_it_creates_delete_external_reference_and_delete_action_for_delete_if_externally_mappable(self, DeleteExternalReferenceAction):
+    def test_it_creates_delete_external_reference_for_delete_if_externally_mappable(self, DeleteExternalReferenceAction):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
         sut = ActionsBuilder(model_mock, external_system_mock)
@@ -263,7 +265,28 @@ class TestActionsBuilder(TestCase):
         DeleteExternalReferenceAction.assert_called_with(
                 external_system_mock, 'external_key')
         self.assertIn(DeleteExternalReferenceAction.return_value, result)
-        self.assertEqual(2, len(result))
+
+    @patch('nsync.actions.DeleteModelAction')
+    def test_it_creates_delete_action_for_forced_delete_if_externally_mappable(self, DeleteModelAction):
+        external_system_mock = MagicMock()
+        model_mock = MagicMock()
+        sut = ActionsBuilder(model_mock, external_system_mock)
+        result = sut.build(EncodedSyncActions(delete=True, force=True), 'field', 'external_key', {'field': 'value'})
+        DeleteModelAction.assert_called_with(model_mock, 'field', {'field': 'value'})
+        self.assertIn(DeleteModelAction.return_value, result)
+
+    @patch('nsync.actions.DeleteIfOnlyReferenceModelAction')
+    @patch('nsync.actions.DeleteModelAction')
+    def test_it_wraps_delete_action_in_delete_if_only_reference_action_for_delete_if_externally_mappable(self,\
+            DeleteModelAction, DeleteIfOnlyReferenceModelAction):
+        external_system_mock = MagicMock()
+        model_mock = MagicMock()
+        sut = ActionsBuilder(model_mock, external_system_mock)
+        result = sut.build(EncodedSyncActions(delete=True), 'field', 'external_key', {'field': 'value'})
+        DeleteModelAction.assert_called_with(model_mock, 'field', {'field': 'value'})
+        DeleteIfOnlyReferenceModelAction.assert_called_with(external_system_mock, 'external_key', 
+                DeleteModelAction.return_value)
+        self.assertIn(DeleteIfOnlyReferenceModelAction.return_value, result)
 
 class TestCreateModelAction(TestCase):
     def test_it_creates_an_object(self):
@@ -333,6 +356,13 @@ class TestUpdateModelAction(TestCase):
                 {'first_name': 'John', 'totally_never_going_to_be_a_field': 'Smith'})
         result = sut.execute()
         self.assertEquals(john, result)
+
+    def test_it_forces_updates_when_configured(self):
+        john = TestPerson.objects.create(first_name='John', last_name='Smith')
+        sut = UpdateModelAction(TestPerson, 'first_name', {'first_name': 'John', 'last_name': 'Jackson'}, True)
+        sut.execute()
+        john.refresh_from_db()
+        self.assertEquals('Jackson', john.last_name)
 
 
 class TestDeleteModelAction(TestCase):
