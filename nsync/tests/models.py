@@ -13,6 +13,11 @@ class TestPerson(models.Model):
         verbose_name = 'Last Name'
     )
     age = models.IntegerField(blank=True, null=True)
+    hair_colour = models.CharField(
+            blank=False,
+            max_length=50,
+            default="Unknown"
+            )
 
     def __str__(self):
         return '{}:{} {} - {}'.format(self.id, \

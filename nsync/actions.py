@@ -38,7 +38,7 @@ class ModelAction:
     def execute(self):
         pass
 
-    def update_from_fields(self, object):
+    def update_from_fields(self, object, force=False):
         # we need to support referential attributes, so look for them
         # as we iterate and store them for later
 
@@ -50,12 +50,21 @@ class ModelAction:
                 split_attribute = attribute.split(self.REFERRED_TO_DELIMITER)
                 referential_attributes[split_attribute[0]][split_attribute[1]] = value
             else:
+                if not force:
+                    current_value = getattr(object, attribute, None)
+                    if not (current_value is None or current_value is ''):
+                        continue
                 setattr(object, attribute, value)
 
         for attribute, get_by in referential_attributes.items():
             try:
                 (field, field_model, direct,  m2m) = object._meta.get_field_by_name(attribute)
                 if direct and field.related_model:
+                    if not force:
+                        current_value = getattr(object, attribute, None)
+                        if current_value is not None:
+                            continue
+
                     try:
                         target = field.related_model.objects.get(**get_by)
                         setattr(object, attribute, target)
@@ -74,7 +83,7 @@ class CreateModelAction(ModelAction):
             return None
 
         obj = self.model()
-        self.update_from_fields(obj)
+        self.update_from_fields(obj, True) # NB: Create uses force to override defaults
         obj.save()
         return obj
 

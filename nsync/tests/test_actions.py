@@ -106,7 +106,41 @@ class TestModelAction(TestCase):
         sut.update_from_fields(house)
         self.assertEqual(person, house.owner)
         
+    def test_update_from_fields_does_not_update_values_that_are_not_null_or_not_empty(self):
+        john = TestPerson(first_name='John', last_name='Smith')
+        ModelAction(TestPerson, 'last_name', {'last_name': 'Jackson'}).update_from_fields(john)
+        self.assertEqual('Smith', john.last_name)
             
+    def test_update_from_fields_does_update_values_that_are_not_null_or_not_empty_when_forced(self):
+        john = TestPerson(first_name='John', last_name='Smith')
+        ModelAction(TestPerson, 'last_name', {'last_name': 'Jackson'}).update_from_fields(john, True)
+        self.assertEqual('Jackson', john.last_name)
+
+    def test_related_fields_update_does_not_update_if_already_assigned_and_not_forced(self):
+        jill = TestPerson.objects.create(first_name="Jill", last_name="Jones")
+        jack = TestPerson.objects.create(first_name="Jack", last_name="Jones")
+        house = TestHouse.objects.create(address='Bottom of the hill', owner=jill)
+        
+        fields = {
+                'address':'Bottom of the hill', 
+                'owner=>first_name':'Jack',
+                'owner=>last_name':'Jones'}
+        sut = ModelAction(TestHouse, 'address', fields)
+        sut.update_from_fields(house)
+        self.assertEqual(jill, house.owner)
+
+    def test_related_fields_update_does_update_if_forced(self):
+        jill = TestPerson.objects.create(first_name="Jill", last_name="Jones")
+        jack = TestPerson.objects.create(first_name="Jack", last_name="Jones")
+        house = TestHouse.objects.create(address='Bottom of the hill', owner=jill)
+        
+        fields = {
+                'address':'Bottom of the hill', 
+                'owner=>first_name':'Jack',
+                'owner=>last_name':'Jones'}
+        sut = ModelAction(TestHouse, 'address', fields)
+        sut.update_from_fields(house, True)
+        self.assertEqual(jack, house.owner)
 
 class TestActionsBuilder(TestCase):
     def setUp(self):
@@ -261,13 +295,14 @@ class TestCreateModelAction(TestCase):
         result = sut.execute()
         self.assertIsNone(result)
 
-    def test_it_creates_an_object_with_all_included_fields(self):
+    def test_it_creates_an_object_with_all_included_fields_and_overrides_defaults(self):
         sut = CreateModelAction(TestPerson, 'first_name', 
-                {'first_name': 'John', 'last_name': 'Smith', 'age': 30})
+                {'first_name': 'John', 'last_name': 'Smith', 'age': 30, 'hair_colour': 'None, he bald!'})
         result = sut.execute()
         self.assertEqual('John', result.first_name)
         self.assertEqual('Smith', result.last_name)
         self.assertEqual(30, result.age)
+        self.assertEqual('None, he bald!', result.hair_colour)
      
 
 class TestUpdateModelAction(TestCase):
