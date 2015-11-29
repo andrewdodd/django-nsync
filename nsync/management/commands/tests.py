@@ -12,8 +12,8 @@ SYNC_ROOT = "/tmp/syncroot"
 
 class TestSyncRecordCSVFileChecker(unittest.TestCase):
     def test_that_no_file_is_invalid(self):
-
         self.assertFalse(SyncRecordCSVFileChecker.is_valid(None))
+
     def test_that_missing_file_is_invalid(self):
         self.assertFalse(SyncRecordCSVFileChecker.is_valid('invalid/file/path'))
 

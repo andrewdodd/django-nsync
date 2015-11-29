@@ -5,8 +5,8 @@ import csv
 import argparse
 
 from nsync.models import ExternalSystem, ExternalReferenceHandler
-from nsync.sync import SyncInfo, SyncRecord
-from nsync.actions import ActionsBuilder
+from nsync.sync import SyncInfo, SyncRecord, ExternalSystemHelper, ModelFinder
+from nsync.actions import CsvActionsBuilder
 
 class Command(BaseCommand):
     help = 'Sync info from one file'
@@ -15,11 +15,11 @@ class Command(BaseCommand):
         # Mandatory
         parser.add_argument('ext_system_name',
                 help='The name of the external system to use for storing sync information in relation to')
-        parser.add_argument('model_name',
-                help='The name of the model to synchronise to')
         parser.add_argument('app_label',
                 default=None,
                 help='The name of the application the model is part of')
+        parser.add_argument('model_name',
+                help='The name of the model to synchronise to')
         parser.add_argument('file_name',
                 help='The file to synchronise from')
         # Optional
@@ -45,15 +45,28 @@ class SyncFileAction:
     @staticmethod
     def sync(external_system, model, file):
         reader = csv.DictReader(file)
-        actions = [ActionsBuilder.from_dict(d) for d in reader]
-        BasicSyncPolicy.process_actions(actions)
+        builder = CsvActionsBuilder(model, external_system)
+        actions = []
+        for d in reader:
+            actions.extend(builder.from_dict(d))
+
+        BasicSyncPolicy(actions).execute()
 
 class BasicSyncPolicy:
-    @classmethod
-    def process_actions(cls, actions):
-        for action in actions:
+    def __init__(self, actions):
+        self.actions = actions
+
+    def execute(self):
+        for action in self.actions:
             action.execute()
 
+class TransactionSyncPolicy:
+    def __init__(self, policy):
+        self.policy = policy
+
+    def execute(self):
+        with transaction.atomic():
+            self.policy.execute
 
 # class SyncActionBuilder:
 #     def __init__(self):

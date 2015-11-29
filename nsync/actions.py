@@ -80,7 +80,7 @@ class CreateModelAction(ModelAction):
     def execute(self):
         if self.find_objects().exists():
             # already exists, return None
-            return None
+            return self.find_objects().get()
 
         obj = self.model()
         self.update_from_fields(obj, True) # NB: Create uses force to override defaults
@@ -194,10 +194,11 @@ class ActionsBuilder:
                 if not sync_actions.force:
                     action = DeleteIfOnlyReferenceModelAction(
                             self.external_system, external_system_key, action)
+                actions.append(action)
                 actions.append(DeleteExternalReferenceAction(
                     self.external_system, external_system_key))
-
-            actions.append(action)
+            elif sync_actions.force:
+                actions.append(action)
 
         if sync_actions.create:
             action = CreateModelAction(self.model, match_field_name, fields)

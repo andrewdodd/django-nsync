@@ -216,9 +216,13 @@ class TestActionsBuilder(TestCase):
 
     @patch('nsync.actions.DeleteModelAction')
     def test_it_calls_delete_action_with_correct_parameters(self, TargetActionClass):
-        result = self.sut.build(SyncActions(delete=True), 'field', ANY, {'field': ''})
+        result = self.sut.build(SyncActions(delete=True, force=True), 'field', ANY, {'field': ''})
         TargetActionClass.assert_called_with(self.model, 'field', {'field': ''})
         self.assertIn(TargetActionClass.return_value, result)
+
+    def test_it_does_not_create_delete_action_if_unforced_and_not_externally_mappable(self):
+        result = self.sut.build(SyncActions(delete=True), 'field', ANY, {'field': ''})
+        self.assertEqual([], result)
 
     def test_it_creates_two_actions_if_create_and_update_action_flags_are_included(self):
         result = self.sut.build(SyncActions(create=True, update=True), 'field', ANY, {'field': ''})
@@ -322,10 +326,10 @@ class TestCreateModelAction(TestCase):
         self.assertEquals('Jackson', TestPerson.objects.first().last_name)
 
     def test_it_does_not_return_the_object_if_it_did_not_create_it(self):
-        TestPerson.objects.create(first_name='John', last_name='Smith')
+        john = TestPerson.objects.create(first_name='John', last_name='Smith')
         sut = CreateModelAction(TestPerson, 'first_name', {'first_name': 'John', 'last_name': 'Smith'})
         result = sut.execute()
-        self.assertIsNone(result)
+        self.assertEqual(john, result)
 
     def test_it_creates_an_object_with_all_included_fields_and_overrides_defaults(self):
         sut = CreateModelAction(TestPerson, 'first_name', 
