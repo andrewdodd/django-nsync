@@ -5,7 +5,6 @@ from django.test import TestCase
 from unittest.mock import MagicMock, patch, ANY
 
 from .syncfile import Command, SyncFileAction
-from .syncfile import BasicSyncPolicy
 from django.core.management.base import CommandError
 
 from nsync.models import ExternalKeyMapping, ExternalSystem
@@ -28,13 +27,6 @@ class TestSyncFileCommand(TestCase):
         #     m.assert_called_with('filename')
         #     SyncFileAction.sync.assert_called_with('systemName', 'model', m.return_value)
         #     #SyncFileAction.assert_called_once_with()
-
-class TestBasicSyncPolicy(TestCase):
-    def test_it_calls_execute_for_all_actions(self):
-        actions = [MagicMock(), MagicMock(), MagicMock()]
-        BasicSyncPolicy(actions).execute()
-        for action in actions:
-            action.execute.assert_called_once_with()
 
 class TestSyncFileAction(TestCase):
     @patch('nsync.management.commands.syncfile.CsvActionsBuilder')

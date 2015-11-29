@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 from django.apps.registry import apps
+from django.db import transaction
 import os
 import csv
 import argparse
@@ -7,6 +8,7 @@ import argparse
 from nsync.models import ExternalSystem, ExternalReferenceHandler
 from nsync.sync import SyncInfo, SyncRecord, ExternalSystemHelper, ModelFinder
 from nsync.actions import CsvActionsBuilder
+from nsync.policies import BasicSyncPolicy, TransactionSyncPolicy
 
 class Command(BaseCommand):
     help = 'Sync info from one file'
@@ -50,52 +52,5 @@ class SyncFileAction:
         for d in reader:
             actions.extend(builder.from_dict(d))
 
-        BasicSyncPolicy(actions).execute()
+        TransactionSyncPolicy(BasicSyncPolicy(actions)).execute()
 
-class BasicSyncPolicy:
-    def __init__(self, actions):
-        self.actions = actions
-
-    def execute(self):
-        for action in self.actions:
-            action.execute()
-
-class TransactionSyncPolicy:
-    def __init__(self, policy):
-        self.policy = policy
-
-    def execute(self):
-        with transaction.atomic():
-            self.policy.execute
-
-# class SyncActionBuilder:
-#     def __init__(self):
-#         pass
-# 
-#     @staticmethod
-#     def is_valid( d):
-#         pass
-# 
-# class CSVSyncFileActionParser:
-# 
-#     def __init__(self, action_header='action_flags', match_field_header='match_field_name'):
-#         self.action_header = action_header
-#         self.match_field_header = match_field_header
-# 
-#     def is_valid(self):
-#         if len(self.reader.fieldnames) < 3:
-#             return False
-# 
-#         return self.mandatory_headers.issubset(self.reader.fieldnames)
-#     
-#     def get_sync_records(self):
-#         records = []
-#         for line in self.reader:
-#             match_field = line['match_field_name']
-#             if match_field in self.mandatory_headers:
-#                 pass # TODO introduce logging for this error
-#             elif match_field not in line.keys():
-#                 pass # TODO introduce logging for this error
-#             else:
-#                 records.append(SyncRecord(**line))
-#         return records
