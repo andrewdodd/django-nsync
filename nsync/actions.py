@@ -165,10 +165,6 @@ class DeleteExternalReferenceAction:
                 external_key=self.external_key).delete()
 
 class ActionsBuilder:
-    action_flags_label = 'action_flags'
-    match_field_name_label = 'match_field_name'
-    external_key_label = 'external_key'
-
     def __init__(self, model, external_system=None):
         self.model = model
         self.external_system = external_system
@@ -185,29 +181,17 @@ class ActionsBuilder:
 
         return external_key.strip() is not ''
 
-    def from_dict(self, raw_values):
-        if not raw_values:
-            return []
-
-        action_flags = raw_values.pop(self.action_flags_label)
-        match_field_name = raw_values.pop(self.match_field_name_label)
-        external_system_key = raw_values.pop(self.external_key_label, None)
-
-        encoded_actions = EncodedSyncActions.decode(action_flags)
-
-        return self.build(encoded_actions, match_field_name, external_system_key, raw_values)
-
-    def build(self, encoded_actions, match_field_name, external_system_key, fields):
+    def build(self, sync_actions, match_field_name, external_system_key, fields):
 
         actions = []
 
-        if encoded_actions.is_impotent():
+        if sync_actions.is_impotent():
             actions.append(ModelAction(self.model, match_field_name, fields))
 
-        if encoded_actions.delete:
+        if sync_actions.delete:
             action = DeleteModelAction(self.model, match_field_name, fields)
             if self.is_externally_mappable(external_system_key):
-                if not encoded_actions.force:
+                if not sync_actions.force:
                     action = DeleteIfOnlyReferenceModelAction(
                             self.external_system, external_system_key, action)
                 actions.append(DeleteExternalReferenceAction(
@@ -215,14 +199,14 @@ class ActionsBuilder:
 
             actions.append(action)
 
-        if encoded_actions.create:
+        if sync_actions.create:
             action = CreateModelAction(self.model, match_field_name, fields)
             if self.is_externally_mappable(external_system_key):
                 action = AlignExternalReferenceAction(self.external_system, self.model,
                         external_system_key, action)
             actions.append(action)
-        if encoded_actions.update:
-            action = UpdateModelAction(self.model, match_field_name, fields, encoded_actions.force)
+        if sync_actions.update:
+            action = UpdateModelAction(self.model, match_field_name, fields, sync_actions.force)
             if self.is_externally_mappable(external_system_key):
                 action = AlignExternalReferenceAction(self.external_system, self.model,
                         external_system_key, action)
@@ -231,7 +215,25 @@ class ActionsBuilder:
         return actions
 
 
-class EncodedSyncActions:
+class CsvActionsBuilder(ActionsBuilder):
+    action_flags_label = 'action_flags'
+    match_field_name_label = 'match_field_name'
+    external_key_label = 'external_key'
+
+    def from_dict(self, raw_values):
+        if not raw_values:
+            return []
+
+        action_flags = raw_values.pop(self.action_flags_label)
+        match_field_name = raw_values.pop(self.match_field_name_label)
+        external_system_key = raw_values.pop(self.external_key_label, None)
+
+        sync_actions = CsvSyncActionsDecoder.decode(action_flags)
+
+        return self.build(sync_actions, match_field_name, external_system_key, raw_values)
+
+
+class SyncActions:
     def __init__(self, create=False, update=False, delete=False, force=False):
         if delete and create:
             raise ValueError("Cannot delete AND create")
@@ -243,19 +245,27 @@ class EncodedSyncActions:
         self.delete = delete
         self.force = force
 
-    def encode(self):
-        return "{}{}{}{}".format(
-                'c' if self.create else '', 
+    def __str__(self):
+        return "SyncActions {}{}{}{}".format(
+                'c' if self.create else '',
                 'u' if self.update else '',
                 'd' if self.delete else '',
                 '*' if self.force else '')
 
-    def __str__(self):
-        return "SyncActions {}".format(self.encode())
-
     def is_impotent(self):
         return not (self.create or self.update or self.delete)
 
+
+class CsvSyncActionsEncoder:
+    @staticmethod
+    def encode(sync_actions):
+        return '{}{}{}{}'.format(
+                'c' if sync_actions.create else '',
+                'u' if sync_actions.update else '',
+                'd' if sync_actions.delete else '',
+                '*' if sync_actions.force else '')
+
+class CsvSyncActionsDecoder:
     @staticmethod
     def decode(action_flags):
         create = False
@@ -272,7 +282,7 @@ class EncodedSyncActions:
             except TypeError:
                 pass # not iterable
 
-        return EncodedSyncActions(create, update, delete, force)
+        return SyncActions(create, update, delete, force)
 
 
 

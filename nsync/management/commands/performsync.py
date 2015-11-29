@@ -5,7 +5,7 @@ import csv
 
 from nsync.models import ExternalSystem, ExternalReferenceHandler
 from nsync.sync import SyncInfo, SyncRecord
-from nsync.actions import EncodedSyncActions
+from nsync.actions import CsvSyncActionsDecoder
 
 class Command(BaseCommand):
     help = 'Prints the people'
@@ -83,7 +83,7 @@ class SyncRecordCSVFileHandler:
                 pass # TODO introduce logging for this error
             else:
                 external_key = line.pop('external_key')
-                sync_actions = EncodedSyncActions.decode(line.pop('delete_flag'))
+                sync_actions = CsvSyncActionsDecoder.decode(line.pop('delete_flag'))
                 records.append(SyncRecord(external_key, sync_actions, match_field, **line))
         return records
 

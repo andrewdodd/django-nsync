@@ -5,7 +5,7 @@ from django.test import TestCase
 from unittest.mock import MagicMock, patch, ANY
 from nsync.sync import SyncRecord, SyncInfo, ExternalSystemHelper, ModelFinder,\
  SyncError, SyncFileAction
-from nsync.actions import CreateModelAction, ActionsBuilder, ModelAction, EncodedSyncActions
+from nsync.actions import CreateModelAction, ActionsBuilder, ModelAction, SyncActions
 
 
 class TestExternalSystemHelper(TestCase):
@@ -54,24 +54,24 @@ class TestSyncFileAction(TestCase):
 
 class TestSyncRecord(TestCase):
     def test_sync_record_is_not_externally_mappable_with_falsy_external_key(self):
-        self.assertFalse(SyncRecord(None, EncodedSyncActions(), "field", field='').is_externally_mappable())
-        self.assertFalse(SyncRecord('', EncodedSyncActions(), "field", field='').is_externally_mappable())
-        self.assertFalse(SyncRecord([], EncodedSyncActions(), "field", field='').is_externally_mappable())
+        self.assertFalse(SyncRecord(None, SyncActions(), "field", field='').is_externally_mappable())
+        self.assertFalse(SyncRecord('', SyncActions(), "field", field='').is_externally_mappable())
+        self.assertFalse(SyncRecord([], SyncActions(), "field", field='').is_externally_mappable())
 
     def test_sync_record_raises_error_if_match_field_name_is_none(self):
         with self.assertRaises(ValueError):
-            SyncRecord(ANY, EncodedSyncActions(), None)
+            SyncRecord(ANY, SyncActions(), None)
 
     def test_sync_record_raises_error_if_match_field_name_is_not_in_fields(self):
         with self.assertRaises(ValueError):
-            SyncRecord(ANY, EncodedSyncActions(), "Field")
+            SyncRecord(ANY, SyncActions(), "Field")
 
     def test_not_externally_mappable_if_no_external_key(self):
-        self.assertFalse(SyncRecord(None, EncodedSyncActions(), 'field', field='').is_externally_mappable())
+        self.assertFalse(SyncRecord(None, SyncActions(), 'field', field='').is_externally_mappable())
 
 class TestSyncInfo(TestCase):
-    create_or_update = EncodedSyncActions(True, True, False)
-    delete = EncodedSyncActions(False, False, True)
+    create_or_update = SyncActions(True, True, False)
+    delete = SyncActions(False, False, True)
 
     def test_get_deleted_returns_records_for_deletion(self):
         
