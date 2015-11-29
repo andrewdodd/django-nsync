@@ -31,6 +31,10 @@ class ModelAction:
                 self.match_field_name,
                 self.fields)
 
+    @property
+    def type(self):
+        return ''
+
     def find_objects(self):
         filter_by = {self.match_field_name: self.fields[self.match_field_name]}
         return self.model.objects.filter(**filter_by)
@@ -87,11 +91,18 @@ class CreateModelAction(ModelAction):
         obj.save()
         return obj
 
+    @property
+    def type(self):
+        return 'create'
 
 class UpdateModelAction(ModelAction):
     def __init__(self, model, match_field_name, fields={}, force_update=False):
         super(UpdateModelAction, self).__init__(model, match_field_name, fields)
         self.force_update = force_update
+
+    @property
+    def type(self):
+        return 'update'
 
     def execute(self):
         try:
@@ -111,6 +122,10 @@ class DeleteIfOnlyReferenceModelAction(ModelAction):
         self.external_key = external_key
         self.external_system = external_system
 
+    @property
+    def type(self):
+        return self.delete_action.type
+
     def execute(self):
         try:
             obj = self.delete_action.find_objects().get()
@@ -126,6 +141,10 @@ class DeleteIfOnlyReferenceModelAction(ModelAction):
 
 
 class DeleteModelAction(ModelAction):
+    @property
+    def type(self):
+        return 'delete'
+
     def execute(self):
         self.find_objects().delete()
 
@@ -135,6 +154,10 @@ class AlignExternalReferenceAction:
         self.external_key = external_key
         self.model = model
         self.action = action
+
+    @property
+    def type(self):
+        return self.action.type
 
     def execute(self):
         model_obj =  self.action.execute()
@@ -159,6 +182,10 @@ class DeleteExternalReferenceAction:
     def __init__(self, external_system, external_key):
         self.external_system = external_system
         self.external_key = external_key
+
+    @property
+    def type(self):
+        return 'delete'
 
     def execute(self):
         ExternalKeyMapping.objects.filter(external_system=self.external_system,

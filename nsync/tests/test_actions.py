@@ -339,7 +339,7 @@ class TestCreateModelAction(TestCase):
         self.assertEqual('Smith', result.last_name)
         self.assertEqual(30, result.age)
         self.assertEqual('None, he bald!', result.hair_colour)
-     
+
 
 class TestUpdateModelAction(TestCase):
     def test_it_returns_the_object_even_if_nothing_updated(self):
@@ -540,3 +540,30 @@ class TestAlignExternalReferenceAction(TestCase):
         result = sut.execute()
         self.assertEqual(mock_action.execute.return_value, result)
 
+
+class TestActionTypes(TestCase):
+    def test_model_action_returns_empty_string_for_type(self):
+        self.assertEquals('', ModelAction(ANY, 'field', {'field':''}).type)
+
+    def test_create_model_action_returns_correct_type_string(self):
+        self.assertEquals('create', CreateModelAction(ANY, 'field', {'field':''}).type)
+
+    def test_update_model_action_returns_correct_type_string(self):
+        self.assertEquals('update', UpdateModelAction(ANY, 'field', {'field':''}).type)
+
+    def test_delete_model_action_returns_correct_type_string(self):
+        self.assertEquals('delete', DeleteModelAction(ANY, 'field', {'field':''}).type)
+        
+    def test_delete_if_only_reference_model_action_returns_wrapped_action_type(self):
+        delete_action = MagicMock()
+        sut = DeleteIfOnlyReferenceModelAction(ANY, ANY, delete_action)
+        self.assertEqual(delete_action.type, sut.type)
+
+    def test_align_external_reference_action_returns_wrapped_action_type(self):
+        action = MagicMock()
+        sut = AlignExternalReferenceAction(ANY, ANY, ANY, action)
+        self.assertEqual(action.type, sut.type)
+
+    def test_delete_external_reference_action_returns_correct_type_string(self):
+        self.assertEquals('delete', DeleteExternalReferenceAction(ANY, ANY).type)
+        
