@@ -14,7 +14,7 @@ class TestSyncFileCommand(TestCase):
         with self.assertRaises(CommandError):
             call_command('syncfile', 'systemName', 'tests', 'TestPerson', 'file')
 
-    @patch('nsync.sync.SyncFileAction')
+    @patch('nsync.management.commands.syncfile.SyncFileAction')
     @patch('os.path.exists')
     def test_command_delegates_to_sync_file_action(self, exists_function, SyncFileAction):
         pass # trouble with the mocks

@@ -5,8 +5,8 @@ import os
 import csv
 import argparse
 
-from nsync.models import ExternalSystem, ExternalReferenceHandler
-from nsync.sync import SyncInfo, SyncRecord, ExternalSystemHelper, ModelFinder
+from nsync.models import ExternalSystem
+from nsync.sync import ExternalSystemHelper, ModelFinder
 from nsync.actions import CsvActionsBuilder
 from nsync.policies import BasicSyncPolicy, TransactionSyncPolicy
 

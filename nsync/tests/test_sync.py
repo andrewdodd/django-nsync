@@ -3,8 +3,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.management.base import CommandError
 from django.test import TestCase
 from unittest.mock import MagicMock, patch, ANY
-from nsync.sync import SyncRecord, SyncInfo, ExternalSystemHelper, ModelFinder,\
- SyncError, SyncFileAction
+from nsync.sync import ExternalSystemHelper, ModelFinder
 from nsync.actions import CreateModelAction, ActionsBuilder, ModelAction, SyncActions
 
 
@@ -47,50 +46,4 @@ class TestSupportedFileChecker(TestCase):
     def test_csv_file_with_headers_is_valid(self):
         pass
 
-class TestSyncFileAction(TestCase):
-    def test_it_raises_error_if_file_unsupported(self):
-        with self.assertRaises(SyncError):
-            SyncFileAction(ANY, ANY, ANY).sync()
-
-class TestSyncRecord(TestCase):
-    def test_sync_record_is_not_externally_mappable_with_falsy_external_key(self):
-        self.assertFalse(SyncRecord(None, SyncActions(), "field", field='').is_externally_mappable())
-        self.assertFalse(SyncRecord('', SyncActions(), "field", field='').is_externally_mappable())
-        self.assertFalse(SyncRecord([], SyncActions(), "field", field='').is_externally_mappable())
-
-    def test_sync_record_raises_error_if_match_field_name_is_none(self):
-        with self.assertRaises(ValueError):
-            SyncRecord(ANY, SyncActions(), None)
-
-    def test_sync_record_raises_error_if_match_field_name_is_not_in_fields(self):
-        with self.assertRaises(ValueError):
-            SyncRecord(ANY, SyncActions(), "Field")
-
-    def test_not_externally_mappable_if_no_external_key(self):
-        self.assertFalse(SyncRecord(None, SyncActions(), 'field', field='').is_externally_mappable())
-
-class TestSyncInfo(TestCase):
-    create_or_update = SyncActions(True, True, False)
-    delete = SyncActions(False, False, True)
-
-    def test_get_deleted_returns_records_for_deletion(self):
-        
-        new_record = SyncRecord(None, self.create_or_update, 'field', field='new record')
-        removed_record = SyncRecord(None, self.delete, 'field', field='removed record')
-
-        subject = SyncInfo(None, None, [new_record, removed_record])
-
-        self.assertIs(len(subject.get_all_records()), 2)
-        self.assertIs(len(subject.get_deleted()), 1)
-        self.assertEqual(removed_record, subject.get_deleted()[0])
-        
-    def test_get_non_deleted_returns_records_for_deletion(self):
-        new_record = SyncRecord(None, self.create_or_update, 'field', field='new record')
-        removed_record = SyncRecord(None, self.delete, 'field', field='removed record')
-        
-        subject = SyncInfo(None, None, [new_record, removed_record])
-
-        self.assertIs(len(subject.get_all_records()), 2)
-        self.assertIs(len(subject.get_non_deleted()), 1)
-        self.assertEqual(new_record, subject.get_non_deleted()[0])
 
