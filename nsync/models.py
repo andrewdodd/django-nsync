@@ -1,13 +1,7 @@
-from collections import defaultdict
 
-from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist, FieldDoesNotExist
 from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-
-import logging
-
-logger = logging.getLogger(__name__)
 
 class ExternalSystem(models.Model):
     """
@@ -39,11 +33,8 @@ class ExternalKeyMapping(models.Model):
     """
     Key Mappings for objects in our system to objects in external systems
     """
-    # limit = models.Q(app_label = 'siteassets', model = 'person') | \
-    #         models.Q(app_label = 'siteassets', model = 'equipment')
     content_type = models.ForeignKey(ContentType,
         help_text = 'The type of object that is mapped to the external system.',
-        # limit_choices_to = limit
     )
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
