@@ -21,7 +21,7 @@ class TestExternalSystemHelper(TestCase):
         ExternalSystem.DoesNotExist = Exception
         ExternalSystem.objects.get.side_effect = ExternalSystem.DoesNotExist
         ExternalSystemHelper.find('systemName', True)
-        ExternalSystem.objects.create.assert_called_with(name='systemName')
+        ExternalSystem.objects.create.assert_called_with(name='systemName', label='systemName')
 
 class TestModelFinder(TestCase):
     def test_find_raises_error_if_app_label_is_blank(self):

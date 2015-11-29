@@ -39,7 +39,7 @@ class ExternalSystemHelper:
             return ExternalSystem.objects.get(name=name)
         except ExternalSystem.DoesNotExist:
             if create:
-                return ExternalSystem.objects.create(name=name)
+                return ExternalSystem.objects.create(name=name, label=name)
             else:
                 raise CommandError("ExternalSystem '{}' not found".format(name))
 
