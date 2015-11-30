@@ -1,36 +1,54 @@
+=============================
 django-nsync
-============
+=============================
 
-.. image:: https://pypip.in/v/django-nsync/badge.png
-    :target: https://pypi.python.org/pypi/django-nsync
-    :alt: Latest PyPI version
+.. image:: https://badge.fury.io/py/django-nsync.png
+    :target: https://badge.fury.io/py/django-nsync
 
-.. image:: https://travis-ci.org/borntyping/cookiecutter-pypackage-minimal.png
-   :target: https://travis-ci.org/borntyping/cookiecutter-pypackage-minimal
-   :alt: Latest Travis CI build status
+.. image:: https://travis-ci.org/andrewdodd/django-nsync.png?branch=master
+    :target: https://travis-ci.org/andrewdodd/django-nsync
 
 Django N Sync provides a simple way to keep your Django Model data N Sync with N external systems
 
-Usage
------
-
-Installation
-------------
-
-Requirements
-^^^^^^^^^^^^
-
-Compatibility
+Documentation
 -------------
 
-Licence
--------
+The full documentation is at https://django-nsync.readthedocs.org.
 
-Authors
--------
+Quickstart
+----------
 
-`django-nsync` was written by `Andrew Dodd <andrew.john.dodd@gmail.com>`_.
-https://github.com/zlorf/django-synchro
-https://github.com/596acres/django-external-data-sync
-https://pypi.python.org/pypi/django-mapped-fields/0.0.4
+Install django-nsync::
 
+    pip install django-nsync
+
+Then use it in a project::
+
+    import nsync
+
+Features
+--------
+
+* TODO
+
+Running Tests
+--------------
+
+Does the code actually work?
+
+::
+
+    source <YOURVIRTUALENV>/bin/activate
+    (myenv) $ pip install -r requirements-text.txt
+    (myenv) $ python runtests.py
+
+Credits
+---------
+
+Tools used in rendering this package:
+
+*  Cookiecutter_
+*  `cookiecutter-pypackage`_
+
+.. _Cookiecutter: https://github.com/audreyr/cookiecutter
+.. _`cookiecutter-pypackage`: https://github.com/pydanny/cookiecutter-djangopackage
