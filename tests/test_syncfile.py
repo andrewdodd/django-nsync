@@ -124,7 +124,7 @@ class TestSyncSingleFileIntegrationTests(TestCase):
             ])
         csv_file_obj.seek(0)
 
-        
+
         call_command('syncfile', 'TestSystem', 'tests', 'TestHouse', csv_file_obj.name)
 
         for object in [house1, house2, house2mapping]:
@@ -139,8 +139,8 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         house3 = TestHouse.objects.create(address='House3')
         house4 = TestHouse.objects.create(address='House4')
 
-        external_system = ExternalSystem.objects.create(name='TestSystem', label='TestSystem')
-        different_external_system = ExternalSystem.objects.create(name='DifferentSystem', label='DifferentSystem')
+        external_system = ExternalSystem.objects.create(name='TestSystem', description='TestSystem')
+        different_external_system = ExternalSystem.objects.create(name='DifferentSystem', description='DifferentSystem')
 
         house2mapping = ExternalKeyMapping.objects.create(
                 content_type=ContentType.objects.get_for_model(TestHouse),
@@ -169,14 +169,14 @@ class TestSyncSingleFileIntegrationTests(TestCase):
             'House4Key,d*,address,House4\n', # Should delete object but leave mapping, as it is forced
             ])
         csv_file_obj.seek(0)
-        
+
         call_command('syncfile', 'TestSystem', 'tests', 'TestHouse', csv_file_obj.name)
 
         self.assertTrue(TestHouse.objects.filter(address='House1').exists())
         self.assertFalse(TestHouse.objects.filter(address='House2').exists())
         self.assertTrue(TestHouse.objects.filter(address='House3').exists())
         self.assertFalse(TestHouse.objects.filter(address='House4').exists())
-        
+
         self.assertFalse(ExternalKeyMapping.objects.filter(external_key='House1Key').exists())
         self.assertFalse(ExternalKeyMapping.objects.filter(external_key='House2Key').exists())
         self.assertTrue(ExternalKeyMapping.objects.filter(external_key='House3Key').exists())

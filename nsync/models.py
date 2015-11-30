@@ -7,18 +7,18 @@ class ExternalSystem(models.Model):
     """
     Computer systems that integration occurs against
     """
-    label = models.CharField(
+    name = models.CharField(
         blank = False,
         db_index = True,
-        help_text = """A short label, used by software applications 
+        help_text = """A short name, used by software applications
                        to locate this particular External System.
                     """,
         max_length = 30,
         unique = True,
     )
-    name = models.CharField(
+    description = models.CharField(
         blank = True,
-        help_text = 'A human readable name for this External System.', 
+        help_text = 'A human readable name for this External System.',
         max_length = 80,
     )
 
@@ -26,7 +26,7 @@ class ExternalSystem(models.Model):
         verbose_name = 'External System'
 
     def __str__(self):
-        return self.name if self.name else self.label
+        return self.name if self.name else self.description
 
 
 class ExternalKeyMapping(models.Model):
