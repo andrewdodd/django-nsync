@@ -132,10 +132,16 @@ class DeleteIfOnlyReferenceModelAction(ModelAction):
 
             key_mapping = ExternalKeyMapping.objects.get(object_id=obj.id, 
                     content_type=ContentType.objects.get_for_model(self.delete_action.model),
-                    external_key=self.external_key,
-                    external_system=self.external_system)
+                    external_key=self.external_key)
 
-            self.delete_action.execute()
+            if key_mapping.external_system == self.external_system:
+                self.delete_action.execute()
+            else:
+                # The key mapping is not 'this' systems key mapping
+                pass
+        except MultipleObjectsReturned:
+            # There are multiple key mappings, we shouldn't delete the object
+            return
         except ObjectDoesNotExist:
             return
 

@@ -461,7 +461,8 @@ class TestDeleteIfOnlyReferenceModelAction(TestCase):
         delete_action.model = TestPerson
         delete_action.find_objects.return_value.get.return_value = john
         DeleteIfOnlyReferenceModelAction(self.external_system, 'Person123', delete_action).execute()
-        delete_action.execute.assert_not_called()
+        self.assertFalse(delete_action.execute.called)
+        delete_action.execute.assert_not_called() # Works in py3.5
 
 
 class TestDeleteExternalReferenceAction(TestCase):

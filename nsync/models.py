@@ -51,5 +51,5 @@ class ExternalKeyMapping(models.Model):
         verbose_name = 'External Key Mapping'
 
     def __str__(self):
-        return "%s:%s" % (self.external_system.label, self.external_key)
+        return "%s:%s" % (self.external_system.name, self.external_key)
 
