@@ -18,6 +18,7 @@ try:
             "django.contrib.contenttypes",
             "django.contrib.sites",
             "nsync",
+            'tests',
         ],
         SITE_ID=1,
         MIDDLEWARE_CLASSES=(),
