@@ -1,14 +1,16 @@
-from django.test import TestCase
 from unittest.mock import MagicMock, patch, ANY
-from nsync.actions import SyncActions, ActionsBuilder, ModelAction, CsvActionsBuilder
-from nsync.actions import CreateModelAction, UpdateModelAction, DeleteModelAction, DeleteExternalReferenceAction, \
-        AlignExternalReferenceAction, DeleteIfOnlyReferenceModelAction
 
-from nsync.actions import CsvSyncActionsDecoder, CsvSyncActionsEncoder
 from django.contrib.contenttypes.fields import ContentType
 from django.core.exceptions import ObjectDoesNotExist
+from django.test import TestCase
+
+from nsync.actions import CreateModelAction, UpdateModelAction, DeleteModelAction, DeleteExternalReferenceAction, \
+        AlignExternalReferenceAction, DeleteIfOnlyReferenceModelAction
+from nsync.actions import CsvSyncActionsDecoder, CsvSyncActionsEncoder
+from nsync.actions import SyncActions, ActionsBuilder, ModelAction, CsvActionsBuilder
 from nsync.models import ExternalSystem, ExternalKeyMapping
-from nsync.tests.models import TestPerson, TestHouse
+from tests.models import TestPerson, TestHouse
+
 
 class TestSyncActions(TestCase):
     def test_sync_actions_raises_error_if_action_includes_create_and_delete(self):

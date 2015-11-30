@@ -12,6 +12,6 @@ if __name__ == "__main__":
     TestRunner = get_runner(settings)
     test_runner = TestRunner()
     failures = test_runner.run_tests([
-        "nsync.tests", 
-        'nsync.management.commands'])
+        "tests",
+    ])
     sys.exit(bool(failures))

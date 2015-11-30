@@ -1,10 +1,9 @@
-from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist, FieldError
-from django.contrib.contenttypes.models import ContentType
+from unittest.mock import patch
+
 from django.core.management.base import CommandError
 from django.test import TestCase
-from unittest.mock import MagicMock, patch, ANY
+
 from nsync.sync import ExternalSystemHelper, ModelFinder
-from nsync.actions import CreateModelAction, ActionsBuilder, ModelAction, SyncActions
 
 
 class TestExternalSystemHelper(TestCase):
@@ -37,7 +36,7 @@ class TestModelFinder(TestCase):
             ModelFinder.find('fakeApp', 'missingModel')
 
     def test_it_returns_the_model_if_found(self):
-        from nsync.tests.models import TestPerson
+        from tests.models import TestPerson
         result = ModelFinder.find('tests', 'TestPerson')
         self.assertEqual(result, TestPerson)
 

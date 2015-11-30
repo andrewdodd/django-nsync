@@ -25,7 +25,7 @@ INSTALLED_APPS = (
 
 PROJECT_APPS = (
     'nsync',
-    'nsync.tests',
+    'tests',
 )
 
 INSTALLED_APPS += PROJECT_APPS
