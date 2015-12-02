@@ -29,7 +29,9 @@ CLASSIFIERS = [
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',        
 ]
-INSTALL_REQUIRES = []
+INSTALL_REQUIRES = ['Django>=1.8']
+TEST_SUITE = 'runtests.run_tests'
+TESTS_REQUIRE = ['Django>=1.8']
 
 ###############################################################################
 
@@ -99,5 +101,7 @@ setup(
     zip_safe=False,
     classifiers=CLASSIFIERS,
     install_requires=INSTALL_REQUIRES,
+    tests_require=TESTS_REQUIRE,
+    test_suite=TEST_SUITE,
 )
 
