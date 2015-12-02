@@ -4,8 +4,8 @@ language: python
 
 python:
   - "3.5"
-  - "3.4"
-  - "3.3"
+# - "3.4"
+# - "3.3"
 
 env:
   - TOXENV=py33-django18
@@ -23,7 +23,8 @@ install: pip install --upgrade pip setuptools tox codecov
 
 # command to run tests using coverage, e.g. python setup.py test
 #script: coverage run --source nsync runtests.py
-script: python setup.py test
+#script: python setup.py test
+script: tox
 
 after_success:
   - codecov
