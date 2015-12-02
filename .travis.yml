@@ -22,7 +22,8 @@ before_install:
 install: pip install --upgrade pip setuptools tox codecov
 
 # command to run tests using coverage, e.g. python setup.py test
-script: coverage run --source nsync runtests.py
+#script: coverage run --source nsync runtests.py
+script: coverage run --source=src/nsync runtests.py
 
 after_success:
   - codecov
