@@ -1,23 +1,21 @@
-import sys
 
 try:
     from django.conf import settings
-    from django.test.utils import get_runner
 
     settings.configure(
         DEBUG=True,
         USE_TZ=True,
         DATABASES={
-            "default": {
-                "ENGINE": "django.db.backends.sqlite3",
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
             }
         },
-        ROOT_URLCONF="nsync.urls",
+        ROOT_URLCONF='nsync.urls',
         INSTALLED_APPS=[
-            "django.contrib.auth",
-            "django.contrib.contenttypes",
-            "django.contrib.sites",
-            "nsync",
+            'django.contrib.auth',
+            'django.contrib.contenttypes',
+            'django.contrib.sites',
+            'nsync',
         ],
         SITE_ID=1,
         MIDDLEWARE_CLASSES=(),
@@ -34,7 +32,7 @@ try:
 except ImportError:
     import traceback
     traceback.print_exc()
-    raise ImportError("To fix this error, run: pip install -r requirements-test.txt")
+    raise ImportError('To fix this error, sort out the imports')
 
 
 def make_migrations():

@@ -1,9 +1,12 @@
-from django.core.exceptions import MultipleObjectsReturned, ObjectDoesNotExist, FieldDoesNotExist
+from django.core.exceptions import (
+    MultipleObjectsReturned,
+    ObjectDoesNotExist,
+    FieldDoesNotExist)
 from django.contrib.contenttypes.fields import ContentType
-from .models import ExternalKeyMapping
-#from nsync.models import ExternalSystem, ExternalReferenceHandler
-from collections import defaultdict
 
+from .models import ExternalKeyMapping
+
+from collections import defaultdict
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,20 +19,22 @@ class ModelAction:
         if model is None:
             raise ValueError('model cannot be None')
         if not match_field_name:
-            raise ValueError('match_field_name({}) must be not "empty"'.format(match_field_name))
+            raise ValueError('match_field_name({}) must be not "empty"'.format(
+                match_field_name))
         if match_field_name not in fields:
-            raise ValueError('match_field_name({}) must be in fields'.format(match_field_name))
+            raise ValueError('match_field_name({}) must be in fields'.format(
+                match_field_name))
 
         self.model = model
         self.match_field_name = match_field_name
         self.fields = fields
 
     def __str__(self):
-        return "Action {} - Model:{} - MatchField:{} - Fields:{}".format(
-                self.__class__,
-                self.model,
-                self.match_field_name,
-                self.fields)
+        return 'Action {} - Model:{} - MatchField:{} - Fields:{}'.format(
+            self.__class__,
+            self.model,
+            self.match_field_name,
+            self.fields)
 
     @property
     def type(self):
@@ -46,13 +51,13 @@ class ModelAction:
         # we need to support referential attributes, so look for them
         # as we iterate and store them for later
 
-        # We store the referential attributes as a dict of dicts, this way filtering
-        # against many fields is possible
+        # We store the referential attributes as a dict of dicts, this way
+        # filtering against many fields is possible
         referential_attributes = defaultdict(dict)
         for attribute, value in self.fields.items():
             if self.REFERRED_TO_DELIMITER in attribute:
-                split_attribute = attribute.split(self.REFERRED_TO_DELIMITER)
-                referential_attributes[split_attribute[0]][split_attribute[1]] = value
+                ref_attr = attribute.split(self.REFERRED_TO_DELIMITER)
+                referential_attributes[ref_attr[0]][ref_attr[1]] = value
             else:
                 if not force:
                     current_value = getattr(object, attribute, None)
@@ -62,7 +67,8 @@ class ModelAction:
 
         for attribute, get_by in referential_attributes.items():
             try:
-                (field, field_model, direct,  m2m) = object._meta.get_field_by_name(attribute)
+                (field, field_model, direct,  m2m) = \
+                    object._meta.get_field_by_name(attribute)
                 if direct and field.related_model:
                     if not force:
                         current_value = getattr(object, attribute, None)
@@ -75,10 +81,11 @@ class ModelAction:
                     except ObjectDoesNotExist as e:
                         logger.info('Referred to object not found')
                     except MultipleObjectsReturned as e:
-                        logger.info('Referred to object points to multiple objects')
+                        logger.info(
+                            'Referred to object points to multiple objects')
             except FieldDoesNotExist as e:
-                pass
-        
+                logger.debug('Field does not exist', e)
+
 
 class CreateModelAction(ModelAction):
     def execute(self):
@@ -87,7 +94,8 @@ class CreateModelAction(ModelAction):
             return self.find_objects().get()
 
         obj = self.model()
-        self.update_from_fields(obj, True) # NB: Create uses force to override defaults
+        # NB: Create uses force to override defaults
+        self.update_from_fields(obj, True)
         obj.save()
         return obj
 
@@ -95,9 +103,11 @@ class CreateModelAction(ModelAction):
     def type(self):
         return 'create'
 
+
 class UpdateModelAction(ModelAction):
     def __init__(self, model, match_field_name, fields={}, force_update=False):
-        super(UpdateModelAction, self).__init__(model, match_field_name, fields)
+        super(UpdateModelAction, self).__init__(
+            model, match_field_name, fields)
         self.force_update = force_update
 
     @property
@@ -113,6 +123,7 @@ class UpdateModelAction(ModelAction):
             return obj
         except ObjectDoesNotExist:
             return None
+
 
 class DeleteIfOnlyReferenceModelAction(ModelAction):
     """This action only deletes the pointed to object if the key mapping
@@ -130,9 +141,11 @@ class DeleteIfOnlyReferenceModelAction(ModelAction):
         try:
             obj = self.delete_action.find_objects().get()
 
-            key_mapping = ExternalKeyMapping.objects.get(object_id=obj.id, 
-                    content_type=ContentType.objects.get_for_model(self.delete_action.model),
-                    external_key=self.external_key)
+            key_mapping = ExternalKeyMapping.objects.get(
+                object_id=obj.id,
+                content_type=ContentType.objects.get_for_model(
+                    self.delete_action.model),
+                external_key=self.external_key)
 
             if key_mapping.external_system == self.external_system:
                 self.delete_action.execute()
@@ -154,6 +167,7 @@ class DeleteModelAction(ModelAction):
     def execute(self):
         self.find_objects().delete()
 
+
 class AlignExternalReferenceAction:
     def __init__(self, external_system, model, external_key, action):
         self.external_system = external_system
@@ -166,7 +180,7 @@ class AlignExternalReferenceAction:
         return self.action.type
 
     def execute(self):
-        model_obj =  self.action.execute()
+        model_obj = self.action.execute()
 
         if model_obj:
             try:
@@ -175,14 +189,16 @@ class AlignExternalReferenceAction:
                     external_key=self.external_key)
             except ExternalKeyMapping.DoesNotExist:
                 mapping = ExternalKeyMapping(
-                            external_system=self.external_system,
-                            external_key=self.external_key)
-            mapping.content_type = ContentType.objects.get_for_model(self.model)
-            mapping.content_object=model_obj
-            mapping.object_id=model_obj.id
+                    external_system=self.external_system,
+                    external_key=self.external_key)
+            mapping.content_type = ContentType.objects.get_for_model(
+                self.model)
+            mapping.content_object = model_obj
+            mapping.object_id = model_obj.id
             mapping.save()
 
         return model_obj
+
 
 class DeleteExternalReferenceAction:
     def __init__(self, external_system, external_key):
@@ -194,8 +210,10 @@ class DeleteExternalReferenceAction:
         return 'delete'
 
     def execute(self):
-        ExternalKeyMapping.objects.filter(external_system=self.external_system,
-                external_key=self.external_key).delete()
+        ExternalKeyMapping.objects.filter(
+            external_system=self.external_system,
+            external_key=self.external_key).delete()
+
 
 class ActionsBuilder:
     def __init__(self, model, external_system=None):
@@ -214,8 +232,8 @@ class ActionsBuilder:
 
         return external_key.strip() is not ''
 
-    def build(self, sync_actions, match_field_name, external_system_key, fields):
-
+    def build(self, sync_actions, match_field_name, external_system_key,
+              fields):
         actions = []
 
         if sync_actions.is_impotent():
@@ -226,7 +244,7 @@ class ActionsBuilder:
             if self.is_externally_mappable(external_system_key):
                 if not sync_actions.force:
                     action = DeleteIfOnlyReferenceModelAction(
-                            self.external_system, external_system_key, action)
+                        self.external_system, external_system_key, action)
                 actions.append(action)
                 actions.append(DeleteExternalReferenceAction(
                     self.external_system, external_system_key))
@@ -236,14 +254,20 @@ class ActionsBuilder:
         if sync_actions.create:
             action = CreateModelAction(self.model, match_field_name, fields)
             if self.is_externally_mappable(external_system_key):
-                action = AlignExternalReferenceAction(self.external_system, self.model,
-                        external_system_key, action)
+                action = AlignExternalReferenceAction(self.external_system,
+                                                      self.model,
+                                                      external_system_key,
+                                                      action)
             actions.append(action)
         if sync_actions.update:
-            action = UpdateModelAction(self.model, match_field_name, fields, sync_actions.force)
+            action = UpdateModelAction(self.model, match_field_name,
+                                       fields, sync_actions.force)
             if self.is_externally_mappable(external_system_key):
-                action = AlignExternalReferenceAction(self.external_system, self.model,
-                        external_system_key, action)
+                action = AlignExternalReferenceAction(self.external_system,
+                                                      self.model,
+                                                      external_system_key,
+                                                      action)
+
             actions.append(action)
 
         return actions
@@ -264,7 +288,8 @@ class CsvActionsBuilder(ActionsBuilder):
 
         sync_actions = CsvSyncActionsDecoder.decode(action_flags)
 
-        return self.build(sync_actions, match_field_name, external_system_key, raw_values)
+        return self.build(sync_actions, match_field_name,
+                          external_system_key, raw_values)
 
 
 class SyncActions:
@@ -281,10 +306,10 @@ class SyncActions:
 
     def __str__(self):
         return "SyncActions {}{}{}{}".format(
-                'c' if self.create else '',
-                'u' if self.update else '',
-                'd' if self.delete else '',
-                '*' if self.force else '')
+            'c' if self.create else '',
+            'u' if self.update else '',
+            'd' if self.delete else '',
+            '*' if self.force else '')
 
     def is_impotent(self):
         return not (self.create or self.update or self.delete)
@@ -294,10 +319,11 @@ class CsvSyncActionsEncoder:
     @staticmethod
     def encode(sync_actions):
         return '{}{}{}{}'.format(
-                'c' if sync_actions.create else '',
-                'u' if sync_actions.update else '',
-                'd' if sync_actions.delete else '',
-                '*' if sync_actions.force else '')
+            'c' if sync_actions.create else '',
+            'u' if sync_actions.update else '',
+            'd' if sync_actions.delete else '',
+            '*' if sync_actions.force else '')
+
 
 class CsvSyncActionsDecoder:
     @staticmethod
@@ -314,9 +340,7 @@ class CsvSyncActionsDecoder:
                 delete = 'D' in action_flags or 'd' in action_flags
                 force = '*' in action_flags
             except TypeError:
-                pass # not iterable
+                # not iterable
+                pass
 
         return SyncActions(create, update, delete, force)
-
-
-

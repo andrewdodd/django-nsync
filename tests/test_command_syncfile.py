@@ -8,6 +8,9 @@ from django.test import TestCase
 from nsync.models import ExternalKeyMapping, ExternalSystem
 from nsync.management.commands.syncfile import SyncFileAction
 
+from tests.models import TestHouse
+import tempfile
+
 
 class TestSyncFileCommand(TestCase):
     def test_command_raises_error_if_file_does_not_exist(self):
@@ -17,7 +20,7 @@ class TestSyncFileCommand(TestCase):
     @patch('nsync.management.commands.syncfile.SyncFileAction')
     @patch('os.path.exists')
     def test_command_delegates_to_sync_file_action(self, exists_function, SyncFileAction):
-        pass # trouble with the mocks
+        pass  # trouble with the mocks
         # exists_function.return_value = True
         # from unittest.mock import mock_open
         # from nsync.management.commands.syncfile import Command
@@ -27,6 +30,7 @@ class TestSyncFileCommand(TestCase):
         #     m.assert_called_with('filename')
         #     SyncFileAction.sync.assert_called_with('systemName', 'model', m.return_value)
         #     #SyncFileAction.assert_called_once_with()
+
 
 class TestSyncFileAction(TestCase):
     @patch('nsync.management.commands.syncfile.CsvActionsBuilder')
@@ -49,8 +53,6 @@ class TestSyncFileAction(TestCase):
         action_mock.execute.assert_called_once_with()
 
 
-from tests.models import TestHouse
-import tempfile
 class TestSyncSingleFileIntegrationTests(TestCase):
     def test_create_and_update(self):
         house1 = TestHouse.objects.create(address='House1')
@@ -61,12 +63,12 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         csv_file_obj = tempfile.NamedTemporaryFile(mode='w')
         csv_file_obj.writelines([
             'action_flags,match_field_name,address,country\n',
-            'c,address,House1,Australia\n', # Should have no effect
-            'u,address,House2,Australia\n', # Should update country
-            'u,address,House3,Australia\n', # Should have no effect
-            'u*,address,House4,Australia\n', # Should update country
-            'c,address,House5,Australia\n', # Should create new house
-            ])
+            'c,address,House1,Australia\n',  # Should have no effect
+            'u,address,House2,Australia\n',  # Should update country
+            'u,address,House3,Australia\n',  # Should have no effect
+            'u*,address,House4,Australia\n',  # Should update country
+            'c,address,House5,Australia\n',  # Should create new house
+        ])
         csv_file_obj.seek(0)
 
         call_command('syncfile', 'TestSystem', 'tests', 'TestHouse', csv_file_obj.name)
@@ -89,9 +91,9 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         csv_file_obj = tempfile.NamedTemporaryFile(mode='w')
         csv_file_obj.writelines([
             'action_flags,match_field_name,address,country\n',
-            'd,address,House1,Australia\n', # Should have no effect
-            'd*,address,House2,Australia\n', # Should delete
-            ])
+            'd,address,House1,Australia\n',  # Should have no effect
+            'd*,address,House2,Australia\n',  # Should delete
+        ])
         csv_file_obj.seek(0)
 
         call_command('syncfile', 'TestSystem', 'tests', 'TestHouse', csv_file_obj.name)
@@ -109,21 +111,19 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         external_system = ExternalSystem.objects.create(name='TestSystem')
 
         house2mapping = ExternalKeyMapping.objects.create(
-                content_type=ContentType.objects.get_for_model(TestHouse),
-                external_system=external_system,
-                external_key='House2Key',
-                object_id=0)
-
+            content_type=ContentType.objects.get_for_model(TestHouse),
+            external_system=external_system,
+            external_key='House2Key',
+            object_id=0)
 
         csv_file_obj = tempfile.NamedTemporaryFile(mode='w')
         csv_file_obj.writelines([
             'external_key,action_flags,match_field_name,address\n',
-            'House1Key,c,address,House1\n', # Should create a key mapping
-            'House2Key,u,address,House2\n', # Should update existing mapping
-            'House3Key,c,address,House3\n', # Should create new house and mapping
-            ])
+            'House1Key,c,address,House1\n',  # Should create a key mapping
+            'House2Key,u,address,House2\n',  # Should update existing mapping
+            'House3Key,c,address,House3\n',  # Should create new house and mapping
+        ])
         csv_file_obj.seek(0)
-
 
         call_command('syncfile', 'TestSystem', 'tests', 'TestHouse', csv_file_obj.name)
 
@@ -134,7 +134,7 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         self.assertEqual(house2mapping.object_id, house2.id)
 
     def test_delete_with_external_refs(self):
-        house1 = TestHouse.objects.create(address='House1')
+        TestHouse.objects.create(address='House1')
         house2 = TestHouse.objects.create(address='House2')
         house3 = TestHouse.objects.create(address='House3')
         house4 = TestHouse.objects.create(address='House4')
@@ -142,32 +142,32 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         external_system = ExternalSystem.objects.create(name='TestSystem', description='TestSystem')
         different_external_system = ExternalSystem.objects.create(name='DifferentSystem', description='DifferentSystem')
 
-        house2mapping = ExternalKeyMapping.objects.create(
-                content_type=ContentType.objects.get_for_model(TestHouse),
-                external_system=external_system,
-                external_key='House2Key',
-                object_id=house2.id)
+        ExternalKeyMapping.objects.create(
+            content_type=ContentType.objects.get_for_model(TestHouse),
+            external_system=external_system,
+            external_key='House2Key',
+            object_id=house2.id)
 
-        house3mapping = ExternalKeyMapping.objects.create(
-                content_type=ContentType.objects.get_for_model(TestHouse),
-                external_system=different_external_system,
-                external_key='House3Key',
-                object_id=house3.id)
+        ExternalKeyMapping.objects.create(
+            content_type=ContentType.objects.get_for_model(TestHouse),
+            external_system=different_external_system,
+            external_key='House3Key',
+            object_id=house3.id)
 
-        house4mapping = ExternalKeyMapping.objects.create(
-                content_type=ContentType.objects.get_for_model(TestHouse),
-                external_system=different_external_system,
-                external_key='House4Key',
-                object_id=house4.id)
+        ExternalKeyMapping.objects.create(
+            content_type=ContentType.objects.get_for_model(TestHouse),
+            external_system=different_external_system,
+            external_key='House4Key',
+            object_id=house4.id)
 
         csv_file_obj = tempfile.NamedTemporaryFile(mode='w')
         csv_file_obj.writelines([
             'external_key,action_flags,match_field_name,address\n',
-            'House1Key,d,address,House1\n', # Should do nothing, as this does not have the final mapping
-            'House2Key,d,address,House2\n', # Should delete, as this IS the final mapping
-            'House3Key,d,address,House3\n', # Should do nothing, as there is another mapping
-            'House4Key,d*,address,House4\n', # Should delete object but leave mapping, as it is forced
-            ])
+            'House1Key,d,address,House1\n',  # Should do nothing, as this does not have the final mapping
+            'House2Key,d,address,House2\n',  # Should delete, as this IS the final mapping
+            'House3Key,d,address,House3\n',  # Should do nothing, as there is another mapping
+            'House4Key,d*,address,House4\n',  # Should delete object but leave mapping, as it is forced
+        ])
         csv_file_obj.seek(0)
 
         call_command('syncfile', 'TestSystem', 'tests', 'TestHouse', csv_file_obj.name)
@@ -181,4 +181,3 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         self.assertFalse(ExternalKeyMapping.objects.filter(external_key='House2Key').exists())
         self.assertTrue(ExternalKeyMapping.objects.filter(external_key='House3Key').exists())
         self.assertTrue(ExternalKeyMapping.objects.filter(external_key='House4Key').exists())
-

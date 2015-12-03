@@ -4,8 +4,13 @@ from django.contrib.contenttypes.fields import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.test import TestCase
 
-from nsync.actions import CreateModelAction, UpdateModelAction, DeleteModelAction, DeleteExternalReferenceAction, \
-        AlignExternalReferenceAction, DeleteIfOnlyReferenceModelAction
+from nsync.actions import (
+    CreateModelAction,
+    UpdateModelAction,
+    DeleteModelAction,
+    DeleteExternalReferenceAction,
+    AlignExternalReferenceAction,
+    DeleteIfOnlyReferenceModelAction)
 from nsync.actions import CsvSyncActionsDecoder, CsvSyncActionsEncoder
 from nsync.actions import SyncActions, ActionsBuilder, ModelAction, CsvActionsBuilder
 from nsync.models import ExternalSystem, ExternalKeyMapping
@@ -30,6 +35,7 @@ class TestCsvSyncActionsEncoder(TestCase):
         self.assertEqual('d', CsvSyncActionsEncoder.encode(SyncActions(delete=True)))
         self.assertEqual('d*', CsvSyncActionsEncoder.encode(SyncActions(delete=True, force=True)))
 
+
 class TestCsvSyncActionsDecoder(TestCase):
     def test_it_is_case_insensitive_when_decoding(self):
         self.assertTrue(CsvSyncActionsDecoder.decode('c').create)
@@ -38,9 +44,6 @@ class TestCsvSyncActionsDecoder(TestCase):
         self.assertTrue(CsvSyncActionsDecoder.decode('U').update)
         self.assertTrue(CsvSyncActionsDecoder.decode('d').delete)
         self.assertTrue(CsvSyncActionsDecoder.decode('D').delete)
-
-    def test_parse_actions_returns_impotent_object_if_no_actions_provided(self):
-        pass #self.assertTrue(EncodedSyncActions.parse_actions('').is_impotent())
 
 
 class TestModelAction(TestCase):
@@ -51,15 +54,15 @@ class TestModelAction(TestCase):
     # TODO - Perhaps update this to look for the attribute on the class?
     def test_it_raises_an_error_if_matchfieldname_is_blank_even_if_blank_is_a_field_key(self):
         with self.assertRaises(ValueError):
-            ModelAction(ANY, '', {'':'value'})
+            ModelAction(ANY, '', {'': 'value'})
 
     def test_creating_with_matchfieldname_not_in_fields_raises_error(self):
         with self.assertRaises(ValueError):
-            ModelAction(ANY, 'matchfield', {'otherField':'value'})
+            ModelAction(ANY, 'matchfield', {'otherField': 'value'})
 
     def test_it_attempts_to_find_through_the_provided_model_class(self):
         model = MagicMock()
-        found_object = ModelAction(model, 'matchfield', {'matchfield':'value'}).find_objects()
+        found_object = ModelAction(model, 'matchfield', {'matchfield': 'value'}).find_objects()
         model.objects.filter.assert_called_once_with(matchfield='value')
         self.assertEqual(found_object, model.objects.filter.return_value)
 
@@ -71,7 +74,7 @@ class TestModelAction(TestCase):
     def test_update_from_fields_updates_related_fields(self):
         person = TestPerson.objects.create(first_name="Jill", last_name="Jones")
         house = TestHouse.objects.create(address='Bottom of the hill')
-        fields = {'address':'Bottom of the hill', 'owner=>first_name':'Jill'}
+        fields = {'address': 'Bottom of the hill', 'owner=>first_name': 'Jill'}
 
         sut = ModelAction(TestHouse, 'address', fields)
         sut.update_from_fields(house)
@@ -80,7 +83,7 @@ class TestModelAction(TestCase):
     @patch('nsync.actions.logger')
     def test_related_fields_are_not_touched_if_referred_to_object_does_not_exist(self, logger):
         house = TestHouse.objects.create(address='Bottom of the hill')
-        fields = {'address':'Bottom of the hill', 'owner=>last_name':'Jones'}
+        fields = {'address': 'Bottom of the hill', 'owner=>last_name': 'Jones'}
 
         sut = ModelAction(TestHouse, 'address', fields)
         sut.update_from_fields(house)
@@ -92,7 +95,7 @@ class TestModelAction(TestCase):
         TestPerson.objects.create(first_name="Jill", last_name="Jones")
         TestPerson.objects.create(first_name="Jack", last_name="Jones")
         house = TestHouse.objects.create(address='Bottom of the hill')
-        fields = {'address':'Bottom of the hill', 'owner=>last_name':'Jones'}
+        fields = {'address': 'Bottom of the hill', 'owner=>last_name': 'Jones'}
         sut = ModelAction(TestHouse, 'address', fields)
         sut.update_from_fields(house)
         self.assertEqual(None, house.owner)
@@ -106,9 +109,9 @@ class TestModelAction(TestCase):
 
         house = TestHouse.objects.create(address='Bottom of the hill')
         fields = {
-                'address':'Bottom of the hill',
-                'owner=>first_name':'John',
-                'owner=>last_name':'Johnson'}
+            'address': 'Bottom of the hill',
+            'owner=>first_name': 'John',
+            'owner=>last_name': 'Johnson'}
         sut = ModelAction(TestHouse, 'address', fields)
         sut.update_from_fields(house)
         self.assertEqual(person, house.owner)
@@ -129,12 +132,13 @@ class TestModelAction(TestCase):
         house = TestHouse.objects.create(address='Bottom of the hill', owner=jill)
 
         fields = {
-                'address':'Bottom of the hill',
-                'owner=>first_name':'Jack',
-                'owner=>last_name':'Jones'}
+            'address': 'Bottom of the hill',
+            'owner=>first_name': 'Jack',
+            'owner=>last_name': 'Jones'}
         sut = ModelAction(TestHouse, 'address', fields)
         sut.update_from_fields(house)
         self.assertEqual(jill, house.owner)
+        self.assertNotEqual(jack, house.owner)
 
     def test_related_fields_update_does_update_if_forced(self):
         jill = TestPerson.objects.create(first_name="Jill", last_name="Jones")
@@ -142,12 +146,13 @@ class TestModelAction(TestCase):
         house = TestHouse.objects.create(address='Bottom of the hill', owner=jill)
 
         fields = {
-                'address':'Bottom of the hill',
-                'owner=>first_name':'Jack',
-                'owner=>last_name':'Jones'}
+            'address': 'Bottom of the hill',
+            'owner=>first_name': 'Jack',
+            'owner=>last_name': 'Jones'}
         sut = ModelAction(TestHouse, 'address', fields)
         sut.update_from_fields(house, True)
         self.assertEqual(jack, house.owner)
+
 
 class TestCsvActionsBuilder(TestCase):
     def setUp(self):
@@ -155,9 +160,9 @@ class TestCsvActionsBuilder(TestCase):
         self.sut = CsvActionsBuilder(self.model)
 
         self.dict_with_defaults = {
-                'action_flags': CsvSyncActionsEncoder().encode(SyncActions()),
-                'match_field_name': 'field1',
-                'field1': ''}
+            'action_flags': CsvSyncActionsEncoder().encode(SyncActions()),
+            'match_field_name': 'field1',
+            'field1': ''}
 
     @patch('nsync.actions.CsvSyncActionsDecoder')
     def test_from_dict_maps_to_build_correctly(self, ActionDecoder):
@@ -170,14 +175,13 @@ class TestCsvActionsBuilder(TestCase):
                 'action_flags': action_flags_mock,
                 'match_field_name': match_field_name_mock,
                 'external_key': external_key_mock,
-                'other_key': 'value'
-                })
+                'other_key': 'value'})
             ActionDecoder.decode.assert_called_with(action_flags_mock)
             build_method.assert_called_with(
-                    ActionDecoder.decode.return_value,
-                    match_field_name_mock,
-                    external_key_mock,
-                    {'other_key': 'value'})
+                ActionDecoder.decode.return_value,
+                match_field_name_mock,
+                external_key_mock,
+                {'other_key': 'value'})
             self.assertEqual(build_method.return_value, result)
 
     def test_returns_an_empty_list_if_no_actions_in_input(self):
@@ -185,11 +189,12 @@ class TestCsvActionsBuilder(TestCase):
 
     def test_it_raises_an_error_if_the_action_flag_key_is_not_in_values(self):
         with self.assertRaises(KeyError):
-            self.sut.from_dict({'not_matched':'value'})
+            self.sut.from_dict({'not_matched': 'value'})
 
     def test_it_raises_an_error_if_the_match_field_key_is_not_in_values(self):
         with self.assertRaises(KeyError):
-            self.sut.from_dict({'action_flags':''})
+            self.sut.from_dict({'action_flags': ''})
+
 
 class TestActionsBuilder(TestCase):
     def setUp(self):
@@ -211,7 +216,7 @@ class TestActionsBuilder(TestCase):
     @patch('nsync.actions.UpdateModelAction')
     def test_it_calls_update_action_with_correct_parameters(self, TargetActionClass):
         for actions in [SyncActions(update=True, force=False),
-                SyncActions(update=True, force=True)]:
+                        SyncActions(update=True, force=True)]:
             result = self.sut.build(actions, 'field', ANY, {'field': ''})
             TargetActionClass.assert_called_with(self.model, 'field', {'field': ''}, actions.force)
             self.assertIn(TargetActionClass.return_value, result)
@@ -245,29 +250,29 @@ class TestActionsBuilder(TestCase):
 
     @patch('nsync.actions.AlignExternalReferenceAction')
     @patch('nsync.actions.CreateModelAction')
-    def test_it_wraps_action_in_align_external_reference_action_for_create_if_externally_mappable(self, \
-            CreateModelAction, AlignExternalReferenceAction):
+    def test_it_wraps_action_in_align_external_reference_action_for_create_if_externally_mappable(
+            self, CreateModelAction, AlignExternalReferenceAction):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
         sut = ActionsBuilder(model_mock, external_system_mock)
         result = sut.build(SyncActions(create=True), 'field', 'external_key', {'field': 'value'})
         AlignExternalReferenceAction.assert_called_with(
-                external_system_mock, model_mock,
-                'external_key', CreateModelAction.return_value)
+            external_system_mock, model_mock,
+            'external_key', CreateModelAction.return_value)
         self.assertIn(AlignExternalReferenceAction.return_value, result)
         self.assertNotIn(CreateModelAction.return_value, result)
 
     @patch('nsync.actions.AlignExternalReferenceAction')
     @patch('nsync.actions.UpdateModelAction')
-    def test_it_wraps_action_in_align_external_reference_action_for_update_if_externally_mappable(self, \
-            UpdateModelAction, AlignExternalReferenceAction):
+    def test_it_wraps_action_in_align_external_reference_action_for_update_if_externally_mappable(
+            self, UpdateModelAction, AlignExternalReferenceAction):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
         sut = ActionsBuilder(model_mock, external_system_mock)
         result = sut.build(SyncActions(update=True), 'field', 'external_key', {'field': 'value'})
         AlignExternalReferenceAction.assert_called_with(
-                external_system_mock, model_mock,
-                'external_key', UpdateModelAction.return_value)
+            external_system_mock, model_mock,
+            'external_key', UpdateModelAction.return_value)
         self.assertIn(AlignExternalReferenceAction.return_value, result)
         self.assertNotIn(UpdateModelAction.return_value, result)
 
@@ -278,7 +283,7 @@ class TestActionsBuilder(TestCase):
         sut = ActionsBuilder(model_mock, external_system_mock)
         result = sut.build(SyncActions(delete=True), 'field', 'external_key', {'field': 'value'})
         DeleteExternalReferenceAction.assert_called_with(
-                external_system_mock, 'external_key')
+            external_system_mock, 'external_key')
         self.assertIn(DeleteExternalReferenceAction.return_value, result)
 
     @patch('nsync.actions.DeleteModelAction')
@@ -292,16 +297,19 @@ class TestActionsBuilder(TestCase):
 
     @patch('nsync.actions.DeleteIfOnlyReferenceModelAction')
     @patch('nsync.actions.DeleteModelAction')
-    def test_it_wraps_delete_action_in_delete_if_only_reference_action_for_delete_if_externally_mappable(self,\
-            DeleteModelAction, DeleteIfOnlyReferenceModelAction):
+    def test_it_wraps_delete_action_in_delete_if_only_reference_action_for_delete_if_externally_mappable(
+            self, DeleteModelAction, DeleteIfOnlyReferenceModelAction):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
         sut = ActionsBuilder(model_mock, external_system_mock)
         result = sut.build(SyncActions(delete=True), 'field', 'external_key', {'field': 'value'})
         DeleteModelAction.assert_called_with(model_mock, 'field', {'field': 'value'})
-        DeleteIfOnlyReferenceModelAction.assert_called_with(external_system_mock, 'external_key',
-                DeleteModelAction.return_value)
+        DeleteIfOnlyReferenceModelAction.assert_called_with(
+            external_system_mock,
+            'external_key',
+            DeleteModelAction.return_value)
         self.assertIn(DeleteIfOnlyReferenceModelAction.return_value, result)
+
 
 class TestCreateModelAction(TestCase):
     def test_it_creates_an_object(self):
@@ -334,8 +342,10 @@ class TestCreateModelAction(TestCase):
         self.assertEqual(john, result)
 
     def test_it_creates_an_object_with_all_included_fields_and_overrides_defaults(self):
-        sut = CreateModelAction(TestPerson, 'first_name',
-                {'first_name': 'John', 'last_name': 'Smith', 'age': 30, 'hair_colour': 'None, he bald!'})
+        sut = CreateModelAction(
+            TestPerson,
+            'first_name',
+            {'first_name': 'John', 'last_name': 'Smith', 'age': 30, 'hair_colour': 'None, he bald!'})
         result = sut.execute()
         self.assertEqual('John', result.first_name)
         self.assertEqual('Smith', result.last_name)
@@ -367,8 +377,10 @@ class TestUpdateModelAction(TestCase):
     # TODO Review this behaviour?
     def test_including_extra_parameters_has_no_effect(self):
         john = TestPerson.objects.create(first_name='John')
-        sut = UpdateModelAction(TestPerson, 'first_name',
-                {'first_name': 'John', 'totally_never_going_to_be_a_field': 'Smith'})
+        sut = UpdateModelAction(
+            TestPerson,
+            'first_name',
+            {'first_name': 'John', 'totally_never_going_to_be_a_field': 'Smith'})
         result = sut.execute()
         self.assertEquals(john, result)
 
@@ -395,6 +407,7 @@ class TestDeleteModelAction(TestCase):
         DeleteModelAction(TestPerson, 'first_name', {'first_name': 'Jack'}).execute()
         self.assertFalse(TestPerson.objects.filter(first_name='Jack').exists())
 
+
 class TestDeleteIfOnlyReferenceModelAction(TestCase):
     def setUp(self):
         self.external_system = ExternalSystem.objects.create(name='System')
@@ -417,12 +430,12 @@ class TestDeleteIfOnlyReferenceModelAction(TestCase):
 
     def test_it_calls_delete_action_if_it_is_the_only_key_mapping(self):
         john = TestPerson.objects.create(first_name='John')
-        person_mapping = ExternalKeyMapping.objects.create(
-                external_system=self.external_system,
-                external_key='Person123',
-                content_type = ContentType.objects.get_for_model(TestPerson),
-                content_object=john,
-                object_id=john.id)
+        ExternalKeyMapping.objects.create(
+            external_system=self.external_system,
+            external_key='Person123',
+            content_type=ContentType.objects.get_for_model(TestPerson),
+            content_object=john,
+            object_id=john.id)
         delete_action = MagicMock()
         delete_action.model = TestPerson
         delete_action.find_objects.return_value.get.return_value = john
@@ -431,12 +444,12 @@ class TestDeleteIfOnlyReferenceModelAction(TestCase):
 
     def test_it_does_not_call_the_delete_action_if_it_is_not_the_key_mapping(self):
         john = TestPerson.objects.create(first_name='John')
-        person_mapping = ExternalKeyMapping.objects.create(
-                external_system= ExternalSystem.objects.create(name='AlternateSystem'),
-                external_key='Person123',
-                content_type = ContentType.objects.get_for_model(TestPerson),
-                content_object=john,
-                object_id=john.id)
+        ExternalKeyMapping.objects.create(
+            external_system=ExternalSystem.objects.create(name='AlternateSystem'),
+            external_key='Person123',
+            content_type=ContentType.objects.get_for_model(TestPerson),
+            content_object=john,
+            object_id=john.id)
         delete_action = MagicMock()
         delete_action.model = TestPerson
         delete_action.find_objects.return_value.get.return_value = john
@@ -446,92 +459,102 @@ class TestDeleteIfOnlyReferenceModelAction(TestCase):
     def test_it_does_not_call_the_delete_action_if_there_are_other_mappings(self):
         john = TestPerson.objects.create(first_name='John')
         ExternalKeyMapping.objects.create(
-                external_system=self.external_system,
-                external_key='Person123',
-                content_type = ContentType.objects.get_for_model(TestPerson),
-                content_object=john,
-                object_id=john.id)
+            external_system=self.external_system,
+            external_key='Person123',
+            content_type=ContentType.objects.get_for_model(TestPerson),
+            content_object=john,
+            object_id=john.id)
         ExternalKeyMapping.objects.create(
-                external_system=ExternalSystem.objects.create(name='OtherSystem'),
-                external_key='Person123',
-                content_type = ContentType.objects.get_for_model(TestPerson),
-                content_object=john,
-                object_id=john.id)
+            external_system=ExternalSystem.objects.create(name='OtherSystem'),
+            external_key='Person123',
+            content_type=ContentType.objects.get_for_model(TestPerson),
+            content_object=john,
+            object_id=john.id)
         delete_action = MagicMock()
         delete_action.model = TestPerson
         delete_action.find_objects.return_value.get.return_value = john
         DeleteIfOnlyReferenceModelAction(self.external_system, 'Person123', delete_action).execute()
         self.assertFalse(delete_action.execute.called)
-        delete_action.execute.assert_not_called() # Works in py3.5
+        delete_action.execute.assert_not_called()  # Works in py3.5
 
 
 class TestDeleteExternalReferenceAction(TestCase):
     def test_it_deletes_the_matching_external_reference(self):
         external_system = ExternalSystem.objects.create(name='System')
-        ExternalKeyMapping.objects.create(external_system=external_system, external_key='Key1',
-                content_type=ContentType.objects.get_for_model(TestPerson),
-                object_id=1)
-        ExternalKeyMapping.objects.create(external_system=external_system, external_key='Key2',
-                content_type=ContentType.objects.get_for_model(TestPerson),
-                object_id=1)
-        ExternalKeyMapping.objects.create(external_system=external_system, external_key='Key3',
-                content_type=ContentType.objects.get_for_model(TestPerson),
-                object_id=1)
+        ExternalKeyMapping.objects.create(
+            external_system=external_system,
+            external_key='Key1',
+            content_type=ContentType.objects.get_for_model(TestPerson),
+            object_id=1)
+        ExternalKeyMapping.objects.create(
+            external_system=external_system,
+            external_key='Key2',
+            content_type=ContentType.objects.get_for_model(TestPerson),
+            object_id=1)
+        ExternalKeyMapping.objects.create(
+            external_system=external_system,
+            external_key='Key3',
+            content_type=ContentType.objects.get_for_model(TestPerson),
+            object_id=1)
         self.assertEqual(3, ExternalKeyMapping.objects.count())
         DeleteExternalReferenceAction(external_system, 'Key2').execute()
         self.assertEqual(2, ExternalKeyMapping.objects.count())
-        self.assertFalse(ExternalKeyMapping.objects.filter(external_system=external_system,
+        self.assertFalse(ExternalKeyMapping.objects.filter(
+            external_system=external_system,
             external_key='Key2').exists())
+
 
 class TestAlignExternalReferenceAction(TestCase):
     def setUp(self):
         self.external_system = ExternalSystem.objects.create(name='System')
         self.john = TestPerson.objects.create(first_name='John')
 
-
     def test_it_creates_a_new_key_mapping_on_success_of_inner_action_if_one_not_found(self):
         mock_action = MagicMock()
         mock_action.execute.return_value = self.john
 
         self.assertEqual(0, ExternalKeyMapping.objects.count())
-        sut = AlignExternalReferenceAction(self.external_system,
-                TestPerson, 'PersonJohn', mock_action)
-        result = sut.execute()
+        sut = AlignExternalReferenceAction(
+            self.external_system,
+            TestPerson, 'PersonJohn', mock_action)
+        sut.execute()
 
         self.assertEqual(1, ExternalKeyMapping.objects.count())
         mapping = ExternalKeyMapping.objects.first()
         self.assertEqual('PersonJohn', mapping.external_key)
         self.assertEqual(self.john, mapping.content_object)
 
-
     def test_it_updates_existing_key_mapping_on_success_of_inner_action(self):
         jill = TestPerson.objects.create(first_name='Jill')
         person_mapping = ExternalKeyMapping.objects.create(
-                external_system=self.external_system,
-                external_key='Person123',
-                content_type = ContentType.objects.get_for_model(TestPerson),
-                content_object=jill,
-                object_id=jill.id)
+            external_system=self.external_system,
+            external_key='Person123',
+            content_type=ContentType.objects.get_for_model(TestPerson),
+            content_object=jill,
+            object_id=jill.id)
         self.assertEqual(1, ExternalKeyMapping.objects.count())
         self.assertEqual(jill, person_mapping.content_object)
 
         mock_action = MagicMock()
         mock_action.execute.return_value = self.john
         sut = AlignExternalReferenceAction(self.external_system,
-                TestPerson, 'Person123', mock_action)
-        result = sut.execute()
+                                           TestPerson,
+                                           'Person123',
+                                           mock_action)
+        sut.execute()
 
         self.assertEqual(1, ExternalKeyMapping.objects.count())
         mapping = ExternalKeyMapping.objects.first()
         self.assertEqual(self.john, mapping.content_object)
 
-
     def test_it_does_nothing_if_inner_action_fails(self):
         mock_action = MagicMock()
         mock_action.execute.return_value = None
         sut = AlignExternalReferenceAction(self.external_system,
-                ANY, ANY, mock_action)
-        result = sut.execute()
+                                           ANY,
+                                           ANY,
+                                           mock_action)
+        sut.execute()
         mock_action.execute.assert_called_with()
         self.assertEqual(0, ExternalKeyMapping.objects.count())
 
@@ -539,23 +562,25 @@ class TestAlignExternalReferenceAction(TestCase):
     def test_it_passes_the_result_of_the_action_back(self, ExternalKeyMapping):
         mock_action = MagicMock()
         sut = AlignExternalReferenceAction(self.external_system,
-                TestPerson, ANY, mock_action)
+                                           TestPerson,
+                                           ANY,
+                                           mock_action)
         result = sut.execute()
         self.assertEqual(mock_action.execute.return_value, result)
 
 
 class TestActionTypes(TestCase):
     def test_model_action_returns_empty_string_for_type(self):
-        self.assertEquals('', ModelAction(ANY, 'field', {'field':''}).type)
+        self.assertEquals('', ModelAction(ANY, 'field', {'field': ''}).type)
 
     def test_create_model_action_returns_correct_type_string(self):
-        self.assertEquals('create', CreateModelAction(ANY, 'field', {'field':''}).type)
+        self.assertEquals('create', CreateModelAction(ANY, 'field', {'field': ''}).type)
 
     def test_update_model_action_returns_correct_type_string(self):
-        self.assertEquals('update', UpdateModelAction(ANY, 'field', {'field':''}).type)
+        self.assertEquals('update', UpdateModelAction(ANY, 'field', {'field': ''}).type)
 
     def test_delete_model_action_returns_correct_type_string(self):
-        self.assertEquals('delete', DeleteModelAction(ANY, 'field', {'field':''}).type)
+        self.assertEquals('delete', DeleteModelAction(ANY, 'field', {'field': ''}).type)
 
     def test_delete_if_only_reference_model_action_returns_wrapped_action_type(self):
         delete_action = MagicMock()
@@ -569,4 +594,3 @@ class TestActionTypes(TestCase):
 
     def test_delete_external_reference_action_returns_correct_type_string(self):
         self.assertEquals('delete', DeleteExternalReferenceAction(ANY, ANY).type)
-

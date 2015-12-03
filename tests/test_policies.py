@@ -1,6 +1,6 @@
 
 from django.test import TestCase
-from unittest.mock import MagicMock, patch, ANY, call
+from unittest.mock import MagicMock, call
 
 from nsync.policies import BasicSyncPolicy, OrderedSyncPolicy
 
@@ -12,12 +12,14 @@ class TestBasicSyncPolicy(TestCase):
         for action in actions:
             action.execute.assert_called_once_with()
 
+
 class TestOrderedSyncPolicy(TestCase):
     def test_it_calls_in_order_create_update_delete(self):
         execute_mock = MagicMock()
+
         def make_mock(type):
             mock = MagicMock()
-            mock.type= type
+            mock.type = type
             return mock
 
         create_action = make_mock('create')
@@ -27,14 +29,12 @@ class TestOrderedSyncPolicy(TestCase):
         execute_mock.update = update_action
         execute_mock.delete = delete_action
 
-
         OrderedSyncPolicy([
-            delete_action, 
+            delete_action,
             create_action,
             update_action]).execute()
 
         execute_mock.assert_has_calls([
-            call.create.execute(), 
+            call.create.execute(),
             call.update.execute(),
             call.delete.execute()])
-

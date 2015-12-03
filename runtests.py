@@ -6,13 +6,13 @@ try:
 
     settings.configure(
         DATABASES={
-            "default": {
-                "ENGINE": "django.db.backends.sqlite3",
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
             }
         },
         INSTALLED_APPS=[
-            "django.contrib.contenttypes",
-            "nsync",
+            'django.contrib.contenttypes',
+            'nsync',
             'tests',
         ],
     )
@@ -28,7 +28,7 @@ try:
 except ImportError:
     import traceback
     traceback.print_exc()
-    raise ImportError("To fix this error, run: pip install -r requirements-test.txt")
+    raise ImportError('To fix this error, sort out the imports')
 
 
 def run_tests(*test_args):

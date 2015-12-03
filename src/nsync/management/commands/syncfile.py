@@ -1,37 +1,42 @@
 from django.core.management.base import BaseCommand, CommandError
-from django.apps.registry import apps
-from django.db import transaction
 import os
 import csv
-import argparse
 
-from nsync.models import ExternalSystem
 from nsync.sync import ExternalSystemHelper, ModelFinder
 from nsync.actions import CsvActionsBuilder
 from nsync.policies import BasicSyncPolicy, TransactionSyncPolicy
+
 
 class Command(BaseCommand):
     help = 'Sync info from one file'
 
     def add_arguments(self, parser):
         # Mandatory
-        parser.add_argument('ext_system_name',
-                help='The name of the external system to use for storing sync information in relation to')
-        parser.add_argument('app_label',
-                default=None,
-                help='The name of the application the model is part of')
-        parser.add_argument('model_name',
-                help='The name of the model to synchronise to')
-        parser.add_argument('file_name',
-                help='The file to synchronise from')
+        parser.add_argument(
+            'ext_system_name',
+            help='The name of the external system to use for storing '
+                 'sync information in relation to')
+        parser.add_argument(
+            'app_label',
+            default=None,
+            help='The name of the application the model is part of')
+        parser.add_argument(
+            'model_name',
+            help='The name of the model to synchronise to')
+        parser.add_argument(
+            'file_name',
+            help='The file to synchronise from')
         # Optional
-        parser.add_argument('--create_external_system',
-                type=bool,
-                default=True,
-                help='The name of the external system to use for storing sync information in relation to')
+        parser.add_argument(
+            '--create_external_system',
+            type=bool,
+            default=True,
+            help='The name of the external system to use for storing '
+                 'sync information in relation to')
 
     def handle(self, *args, **options):
-        external_system = ExternalSystemHelper.find(options['ext_system_name'], options['create_external_system'])
+        external_system = ExternalSystemHelper.find(
+            options['ext_system_name'], options['create_external_system'])
         model = ModelFinder.find(options['app_label'], options['model_name'])
 
         filename = options['file_name']
@@ -39,9 +44,10 @@ class Command(BaseCommand):
             raise CommandError("Filename '{}' not found".format(filename))
 
         with open(filename) as f:
-            # TODO - Review - This indirection is only due to issues in getting the 
-            # mocks in the tests to work
+            # TODO - Review - This indirection is only due to issues in
+            # getting the mocks in the tests to work
             SyncFileAction.sync(external_system, model, f)
+
 
 class SyncFileAction:
     @staticmethod
@@ -53,4 +59,3 @@ class SyncFileAction:
             actions.extend(builder.from_dict(d))
 
         TransactionSyncPolicy(BasicSyncPolicy(actions)).execute()
-

@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import re
 
 
-# Start of section from Hynek 
+# Start of section from Hynek
 # https://github.com/hynek/attrs/blob/master/setup.py
 import codecs
 from setuptools import setup, find_packages
@@ -27,7 +26,7 @@ CLASSIFIERS = [
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3.3',
     'Programming Language :: Python :: 3.4',
-    'Programming Language :: Python :: 3.5',        
+    'Programming Language :: Python :: 3.5',
 ]
 INSTALL_REQUIRES = ['Django>=1.8']
 TEST_SUITE = 'runtests.run_tests'
@@ -64,23 +63,6 @@ def find_meta(meta):
 
 # End of section from Hynek
 
-if sys.argv[-1] == 'publish':
-    try:
-        import wheel
-    except ImportError:
-        print('Wheel library missing. Please run "pip install wheel"')
-        sys.exit()
-    os.system('python setup.py sdist upload')
-    os.system('python setup.py bdist_wheel upload')
-    sys.exit()
-
-if sys.argv[-1] == 'tag':
-    print("Tagging the version on github:")
-    version = find_meta('version')
-    os.system("git tag -a %s -m 'version %s'" % (version, version))
-    os.system("git push --tags")
-    sys.exit()
-
 readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
@@ -104,4 +86,3 @@ setup(
     tests_require=TESTS_REQUIRE,
     test_suite=TEST_SUITE,
 )
-

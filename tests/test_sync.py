@@ -22,6 +22,7 @@ class TestExternalSystemHelper(TestCase):
         ExternalSystemHelper.find('systemName', True)
         ExternalSystem.objects.create.assert_called_with(name='systemName', description='systemName')
 
+
 class TestModelFinder(TestCase):
     def test_find_raises_error_if_app_label_is_blank(self):
         with self.assertRaises(CommandError):
@@ -44,5 +45,3 @@ class TestModelFinder(TestCase):
 class TestSupportedFileChecker(TestCase):
     def test_csv_file_with_headers_is_valid(self):
         pass
-
-

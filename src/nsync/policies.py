@@ -25,7 +25,7 @@ class OrderedSyncPolicy:
 
     def execute(self):
         for filter_by in ['create', 'update', 'delete']:
-            filtered_actions = filter(lambda a: a.type == filter_by, self.actions)
+            filtered_actions = filter(lambda a: a.type == filter_by,
+                                      self.actions)
             for action in filtered_actions:
                 action.execute()
-
