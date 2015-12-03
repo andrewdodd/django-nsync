@@ -4,15 +4,11 @@ from django.contrib import admin
 from .models import ExternalSystem
 from .models import ExternalKeyMapping
 
-import logging
 
-logger = logging.getLogger(__name__)
-
-@admin.register(ExternalSystem)
 class ExternalSystemAdmin(admin.ModelAdmin):
-    list_display = ('__str__', 'label')
+    list_display = ('name', 'description')
 
-@admin.register(ExternalKeyMapping)
+
 class ExternalKeyMappingAdmin(admin.ModelAdmin):
     fieldsets = (
             ('Internal Object', {
@@ -22,7 +18,4 @@ class ExternalKeyMappingAdmin(admin.ModelAdmin):
                 'fields': ('external_system', 'external_key')
             }),
         ) 
-
-#admin.site.register(ExternalKeyMapping)
-#admin.site.register(ExternalSystem)
 
