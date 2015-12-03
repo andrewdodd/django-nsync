@@ -5,23 +5,16 @@ try:
     from django.test.utils import get_runner
 
     settings.configure(
-        DEBUG=True,
-        USE_TZ=True,
         DATABASES={
             "default": {
                 "ENGINE": "django.db.backends.sqlite3",
             }
         },
-        ROOT_URLCONF="nsync.urls",
         INSTALLED_APPS=[
-            "django.contrib.auth",
             "django.contrib.contenttypes",
-            "django.contrib.sites",
             "nsync",
             'tests',
         ],
-        SITE_ID=1,
-        MIDDLEWARE_CLASSES=(),
     )
 
     try:
