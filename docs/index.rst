@@ -6,14 +6,25 @@
 Welcome to django-nsync's documentation!
 =================================================================
 
-Contents:
+.. include:: ../README.rst
+
+User Guide
+----------
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 1
+    installation
+    overview
+    examples
+    api
+    extending
 
-   readme
-   installation
-   usage
+
+Project Infomation
+------------------
+.. toctree::
+   :maxdepth: 1
+
    contributing
    authors
    history
