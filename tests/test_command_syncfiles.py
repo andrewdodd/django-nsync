@@ -51,6 +51,21 @@ class TestTestableCommand(TestCase):
         ActionsBuilder.return_value.from_dict.assert_called_with(row)
         action_mock.execute.assert_called_once_with()
 
+    @patch('nsync.management.commands.syncfiles.SupportedFileChecker')
+    def test_command_raises_error_if_not_CSV_file(self, SupportedFileChecker):
+        SupportedFileChecker.is_valid.return_value = False
+        files_mock = MagicMock()
+        sut = TestableCommand(**{
+            'files': [files_mock],
+            'file_name_regex': DEFAULT_FILE_REGEX,
+            'create_external_system': MagicMock()
+        })
+
+        with self.assertRaises(CommandError):
+            sut.execute()
+        SupportedFileChecker.is_valid.assert_called_with(files_mock)
+
+
 
 class TestTargetExtractor(TestCase):
     def setUp(self):

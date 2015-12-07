@@ -35,7 +35,7 @@ class Command(BaseCommand):
                  'system object if one cannot be found')
 
     def handle(self, *args, **options):
-        TestableCommand(**options)()
+        TestableCommand(**options).execute()
 
 
 class TestableCommand:
@@ -44,7 +44,7 @@ class TestableCommand:
         self.pattern = re.compile(options['file_name_regex'])
         self.create_external_system = options['create_external_system']
 
-    def __call__(self):
+    def execute(self):
         pass
 
         actions = []
