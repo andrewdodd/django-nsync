@@ -8,6 +8,10 @@ django-nsync
 .. image:: https://travis-ci.org/andrewdodd/django-nsync.png?branch=master
     :target: https://travis-ci.org/andrewdodd/django-nsync
 
+.. image:: https://codecov.io/github/andrewdodd/django-nsync/coverage.svg?branch=master
+   :target: https://codecov.io/github/andrewdodd/django-nsync?branch=master
+   :alt: Coverage
+
 Django NSync provides a simple way to keep your Django Model data 'n-sync with N external systems.
 
 Features
