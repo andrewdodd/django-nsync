@@ -1,38 +1,4 @@
 
-try:
-    from django.conf import settings
-
-    settings.configure(
-        DEBUG=True,
-        USE_TZ=True,
-        DATABASES={
-            'default': {
-                'ENGINE': 'django.db.backends.sqlite3',
-            }
-        },
-        ROOT_URLCONF='nsync.urls',
-        INSTALLED_APPS=[
-            'django.contrib.auth',
-            'django.contrib.contenttypes',
-            'django.contrib.sites',
-            'nsync',
-        ],
-        SITE_ID=1,
-        MIDDLEWARE_CLASSES=(),
-    )
-
-    try:
-        import django
-        setup = django.setup
-    except AttributeError:
-        pass
-    else:
-        setup()
-
-except ImportError:
-    import traceback
-    traceback.print_exc()
-    raise ImportError('To fix this error, sort out the imports')
 
 
 def make_migrations():
@@ -41,4 +7,25 @@ def make_migrations():
 
 
 if __name__ == '__main__':
+    import sys
+    sys.path.append('./src/')
+
+    try:
+        from django.conf import settings
+
+        settings.configure(
+            INSTALLED_APPS=[
+                'django.contrib.contenttypes',
+                'nsync',
+            ],
+        )
+
+        import django
+        django.setup()
+
+    except ImportError:
+        import traceback
+        traceback.print_exc()
+        raise ImportError('To fix this error, sort out the imports')
+
     make_migrations()
