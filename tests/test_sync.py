@@ -43,5 +43,8 @@ class TestModelFinder(TestCase):
 
 
 class TestSupportedFileChecker(TestCase):
+    def test_it_thinks_none_file_is_not_valid(self):
+        self.assertFalse(SupportedFileChecker.is_valid(None))
+
     def test_csv_file_with_headers_is_valid(self):
         pass

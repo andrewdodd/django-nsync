@@ -26,6 +26,14 @@ class TestSyncActions(TestCase):
         with self.assertRaises(ValueError):
             SyncActions(update=True, delete=True)
 
+    def test_string_representations_are_correct(self):
+        self.assertIn('c', str(SyncActions(create=True)))
+        self.assertIn('u', str(SyncActions(update=True)))
+        self.assertIn('d', str(SyncActions(delete=True)))
+        self.assertIn('cu', str(SyncActions(create=True, update=True)))
+        self.assertIn('u*', str(SyncActions(update=True, force=True)))
+        self.assertIn('d*', str(SyncActions(delete=True, force=True)))
+        self.assertIn('cu*', str(SyncActions(create=True, update=True, force=True)))
 
 class TestCsvSyncActionsEncoder(TestCase):
     def test_it_encodes_as_expected(self):
@@ -44,6 +52,13 @@ class TestCsvSyncActionsDecoder(TestCase):
         self.assertTrue(CsvSyncActionsDecoder.decode('U').update)
         self.assertTrue(CsvSyncActionsDecoder.decode('d').delete)
         self.assertTrue(CsvSyncActionsDecoder.decode('D').delete)
+
+    def test_it_produces_object_with_no_actions_if_input_invalid(self):
+        result = CsvSyncActionsDecoder.decode(123)
+        self.assertFalse(result.create)
+        self.assertFalse(result.update)
+        self.assertFalse(result.delete)
+        self.assertFalse(result.force)
 
 
 class TestModelAction(TestCase):
