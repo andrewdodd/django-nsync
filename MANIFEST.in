@@ -1,6 +1,6 @@
-include AUTHORS.rst
-include CONTRIBUTING.rst
-include HISTORY.rst
-include LICENSE
-include README.rst
-recursive-include nsync *.html *.png *.gif *js *.css *jpg *jpeg *svg *py
+include *.rst *.txt LICENSE tox.ini .travis.yml docs/Makefile runtests.py
+recursive-include tests *.py
+recursive-include docs *.rst
+recursive-include docs *.py
+
+prune docs/_build
