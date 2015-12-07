@@ -1,4 +1,10 @@
 
+Examples
+========
+
+Example - Plain file
+--------------------
+
 .. example-persons-noexternal-txt-begin
 ::
     first_name,last_name,employee_id,action_flags,match_field_name
@@ -14,3 +20,4 @@
     1221228,"cu","employee_id","Andrew","Dodd","EMP1111"
     4371928,"d","employee_id","Some","Other-Guy","EMP2222"
 .. example-persons-external-csv-end
+

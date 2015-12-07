@@ -13,11 +13,10 @@ User Guide
 
 .. toctree::
     :maxdepth: 1
-    installation
+
+    quickstart
     overview
     examples
-    api
-    extending
 
 
 Project Infomation
