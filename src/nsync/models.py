@@ -26,7 +26,7 @@ class ExternalSystem(models.Model):
         verbose_name = 'External System'
 
     def __str__(self):
-        return self.name if self.name else self.description
+        return self.description if self.description else self.name
 
 
 class ExternalKeyMapping(models.Model):
@@ -51,4 +51,8 @@ class ExternalKeyMapping(models.Model):
         verbose_name = 'External Key Mapping'
 
     def __str__(self):
-        return '{}:{}'.format(self.external_system.name, self.external_key)
+        return '{}:{}-{}:{}'.format(
+            self.external_system.name,
+            self.external_key,
+            self.content_type.model_class().__name__,
+            self.object_id)

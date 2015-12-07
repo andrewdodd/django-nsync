@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.core.management.base import CommandError
 from django.test import TestCase
 
-from nsync.sync import ExternalSystemHelper, ModelFinder
+from nsync.sync import ExternalSystemHelper, ModelFinder, SupportedFileChecker
 
 
 class TestExternalSystemHelper(TestCase):
