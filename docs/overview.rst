@@ -23,7 +23,7 @@ reasons listed;
   fail-over, production & testing)
 
   - This is quite a 'full on' project, and it is mainly focussed on synchronising two Django
-    applications, not dispirate systems
+    applications, not disparate systems
 
 * `django-external-data-sync`_ - This is quite close in purpose (I think, I didn't look at it too
   closely yet) to ``django-nsync``, which is periodically synchronising with external data
