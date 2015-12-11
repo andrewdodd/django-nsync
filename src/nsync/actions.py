@@ -67,9 +67,11 @@ class ModelAction:
 
         for attribute, get_by in referential_attributes.items():
             try:
-                (field, field_model, direct,  m2m) = \
-                    object._meta.get_field_by_name(attribute)
-                if direct and field.related_model:
+                field = object._meta.get_field(attribute)
+                # see: https://docs.djangoproject.com/en/1.9/ref/models/meta/#migrating-old-meta-api
+                # for migration advice of the get_field_by_name() call
+                if (not field.auto_created or field.concrete) \
+                        and field.related_model:
                     if not force:
                         current_value = getattr(object, attribute, None)
                         if current_value is not None:
