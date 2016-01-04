@@ -6,7 +6,11 @@ import re
 
 from .utils import (ExternalSystemHelper, ModelFinder, SupportedFileChecker, 
                     CsvActionsBuilder)
-from nsync.policies import OrderedSyncPolicy, TransactionSyncPolicy
+from nsync.policies import (
+    BasicSyncPolicy,
+    OrderedSyncPolicy,
+    TransactionSyncPolicy
+    )
 
 
 (DEFAULT_FILE_REGEX) = (r'(?P<external_system>[a-zA-Z0-9]+)_'
@@ -33,6 +37,20 @@ class Command(BaseCommand):
             default=True,
             help='If true, the command will create a matching external '
                  'system object if one cannot be found')
+        parser.add_argument(
+            '--smart_ordering',
+            type=bool,
+            default=True,
+            help='When this option it true, the command will perform all '
+                 'Create actions, then Update actions, and finally Delete '
+                 'actions. This ensures that if one file creates an object '
+                 'but another deletes it, the order that the files are '
+                 'provided to the command is not important. Default: True')
+        parser.add_argument(
+            '--as_transaction',
+            type=bool,
+            default=True,
+            help='Wrap all of the actions in a DB transaction Default:True')
 
     def handle(self, *args, **options):
         TestableCommand(**options).execute()
@@ -43,8 +61,23 @@ class TestableCommand:
         self.files = options['files']
         self.pattern = re.compile(options['file_name_regex'])
         self.create_external_system = options['create_external_system']
+        self.ordered = options['smart_ordering']
+        self.use_transaction = options['as_transaction']
 
     def execute(self):
+        actions = self.collect_all_actions()
+
+        if self.ordered:
+            policy = OrderedSyncPolicy(actions)
+        else:
+            policy = BasicSyncPolicy(actions)
+
+        if self.use_transaction:
+            policy = TransactionSyncPolicy(policy)
+
+        policy.execute()
+
+    def collect_all_actions(self):
         actions = []
 
         for f in self.files:
@@ -62,8 +95,7 @@ class TestableCommand:
             builder = CsvActionsBuilder(model, external_system)
             for d in reader:
                 actions.extend(builder.from_dict(d))
-
-        TransactionSyncPolicy(OrderedSyncPolicy(actions)).execute()
+        return actions
 
 
 class TargetExtractor:

@@ -7,7 +7,7 @@ from nsync.policies import BasicSyncPolicy, TransactionSyncPolicy
 
 
 class Command(BaseCommand):
-    help = 'Sync info from one file'
+    help = 'Synchonise model info from one file'
 
     def add_arguments(self, parser):
         # Mandatory
@@ -25,6 +25,7 @@ class Command(BaseCommand):
         parser.add_argument(
             'file_name',
             help='The file to synchronise from')
+
         # Optional
         parser.add_argument(
             '--create_external_system',
@@ -32,6 +33,11 @@ class Command(BaseCommand):
             default=True,
             help='The name of the external system to use for storing '
                  'sync information in relation to')
+        parser.add_argument(
+            '--as_transaction',
+            type=bool,
+            default=True,
+            help='Wrap all of the actions in a DB transaction Default:True')
 
     def handle(self, *args, **options):
         external_system = ExternalSystemHelper.find(
@@ -45,16 +51,21 @@ class Command(BaseCommand):
         with open(filename) as f:
             # TODO - Review - This indirection is only due to issues in
             # getting the mocks in the tests to work
-            SyncFileAction.sync(external_system, model, f)
+            SyncFileAction.sync(external_system, model, f, options['as_transaction'])
 
 
 class SyncFileAction:
     @staticmethod
-    def sync(external_system, model, file):
+    def sync(external_system, model, file, use_transaction):
         reader = csv.DictReader(file)
         builder = CsvActionsBuilder(model, external_system)
         actions = []
         for d in reader:
             actions.extend(builder.from_dict(d))
 
-        TransactionSyncPolicy(BasicSyncPolicy(actions)).execute()
+        policy = BasicSyncPolicy(actions)
+
+        if use_transaction:
+            policy = TransactionSyncPolicy(policy)
+
+        policy.execute()

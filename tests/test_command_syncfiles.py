@@ -1,5 +1,6 @@
 import re
 import tempfile
+from collections import defaultdict
 from unittest.mock import MagicMock, patch
 
 from django.contrib.contenttypes.models import ContentType
@@ -32,24 +33,49 @@ class TestSyncFilesCommand(TestCase):
 
 
 class TestTestableCommand(TestCase):
-    @patch('nsync.management.commands.syncfile.CsvActionsBuilder')
-    @patch('csv.DictReader')
-    def xtest_data_flow(self, DictReader, ActionsBuilder):
-        file = MagicMock()
-        row = MagicMock()
-        row_provider = MagicMock()
-        DictReader.return_value = row_provider
-        row_provider.__iter__.return_value = [row]
-        model_mock = MagicMock()
-        external_system_mock = MagicMock()
-        action_mock = MagicMock()
-        ActionsBuilder.return_value.from_dict.return_value = [action_mock]
-        TestableCommand.sync(external_system_mock, model_mock, file)
-        DictReader.assert_called_with(file)
-        ActionsBuilder.assert_called_with(model_mock, external_system_mock)
+    def setUp(self):
+        self.defaults = {
+            'files': '',
+            'file_name_regex': '',
+            'create_external_system': '',
+            'smart_ordering': '',
+            'as_transaction': ''
+        }
 
-        ActionsBuilder.return_value.from_dict.assert_called_with(row)
-        action_mock.execute.assert_called_once_with()
+    @patch('nsync.management.commands.syncfiles.BasicSyncPolicy')
+    def test_it_uses_the_basic_policy_if_smart_ordering_is_false(self, Policy):
+        self.defaults['smart_ordering'] = False
+        actions_list = MagicMock()
+
+        with patch.object(TestableCommand, 'collect_all_actions', return_value=actions_list):
+            sut = TestableCommand(**self.defaults)
+            sut.execute()
+            Policy.assert_called_with(actions_list)
+            Policy.return_value.execute.assert_called_once_with()
+
+    @patch('nsync.management.commands.syncfiles.OrderedSyncPolicy')
+    def test_it_uses_the_ordered_policy_if_smart_ordering_is_true(self, Policy):
+        self.defaults['smart_ordering'] = True
+        actions_list = MagicMock()
+
+        with patch.object(TestableCommand, 'collect_all_actions', return_value=actions_list):
+            sut = TestableCommand(**self.defaults)
+            sut.execute()
+            Policy.assert_called_with(actions_list)
+            Policy.return_value.execute.assert_called_once_with()
+
+    @patch('nsync.management.commands.syncfiles.TransactionSyncPolicy')
+    @patch('nsync.management.commands.syncfiles.BasicSyncPolicy')
+    def test_it_wraps_the_basic_policy_in_a_transaction_policy_if_configured(self, BasicSyncPolicy, TransactionSyncPolicy):
+        self.defaults['smart_ordering'] = False
+        self.defaults['as_transaction'] = True
+        actions_list = MagicMock()
+
+        with patch.object(TestableCommand, 'collect_all_actions', return_value=actions_list):
+            sut = TestableCommand(**self.defaults)
+            sut.execute()
+            TransactionSyncPolicy.assert_called_with(BasicSyncPolicy.return_value)
+            TransactionSyncPolicy.return_value.execute.assert_called_once_with()
 
     @patch('nsync.management.commands.syncfiles.SupportedFileChecker')
     def test_command_raises_error_if_not_CSV_file(self, SupportedFileChecker):
@@ -58,13 +84,14 @@ class TestTestableCommand(TestCase):
         sut = TestableCommand(**{
             'files': [files_mock],
             'file_name_regex': DEFAULT_FILE_REGEX,
-            'create_external_system': MagicMock()
+            'create_external_system': MagicMock(),
+            'smart_ordering': MagicMock(),
+            'as_transaction': MagicMock()
         })
 
         with self.assertRaises(CommandError):
             sut.execute()
         SupportedFileChecker.is_valid.assert_called_with(files_mock)
-
 
 
 class TestTargetExtractor(TestCase):
