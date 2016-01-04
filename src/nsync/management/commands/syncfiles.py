@@ -4,8 +4,8 @@ import csv
 import argparse
 import re
 
-from nsync.sync import ExternalSystemHelper, ModelFinder, SupportedFileChecker
-from nsync.actions import CsvActionsBuilder
+from .utils import (ExternalSystemHelper, ModelFinder, SupportedFileChecker, 
+                    CsvActionsBuilder)
 from nsync.policies import OrderedSyncPolicy, TransactionSyncPolicy
 
 
@@ -45,8 +45,6 @@ class TestableCommand:
         self.create_external_system = options['create_external_system']
 
     def execute(self):
-        pass
-
         actions = []
 
         for f in self.files:

@@ -275,24 +275,6 @@ class ActionsBuilder:
         return actions
 
 
-class CsvActionsBuilder(ActionsBuilder):
-    action_flags_label = 'action_flags'
-    match_field_name_label = 'match_field_name'
-    external_key_label = 'external_key'
-
-    def from_dict(self, raw_values):
-        if not raw_values:
-            return []
-
-        action_flags = raw_values.pop(self.action_flags_label)
-        match_field_name = raw_values.pop(self.match_field_name_label)
-        external_system_key = raw_values.pop(self.external_key_label, None)
-
-        sync_actions = CsvSyncActionsDecoder.decode(action_flags)
-
-        return self.build(sync_actions, match_field_name,
-                          external_system_key, raw_values)
-
 
 class SyncActions:
     def __init__(self, create=False, update=False, delete=False, force=False):
@@ -315,34 +297,3 @@ class SyncActions:
 
     def is_impotent(self):
         return not (self.create or self.update or self.delete)
-
-
-class CsvSyncActionsEncoder:
-    @staticmethod
-    def encode(sync_actions):
-        return '{}{}{}{}'.format(
-            'c' if sync_actions.create else '',
-            'u' if sync_actions.update else '',
-            'd' if sync_actions.delete else '',
-            '*' if sync_actions.force else '')
-
-
-class CsvSyncActionsDecoder:
-    @staticmethod
-    def decode(action_flags):
-        create = False
-        update = False
-        delete = False
-        force = False
-
-        if action_flags:
-            try:
-                create = 'C' in action_flags or 'c' in action_flags
-                update = 'U' in action_flags or 'u' in action_flags
-                delete = 'D' in action_flags or 'd' in action_flags
-                force = '*' in action_flags
-            except TypeError:
-                # not iterable
-                pass
-
-        return SyncActions(create, update, delete, force)

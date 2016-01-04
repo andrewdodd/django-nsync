@@ -10,9 +10,10 @@ from nsync.actions import (
     DeleteModelAction,
     DeleteExternalReferenceAction,
     AlignExternalReferenceAction,
-    DeleteIfOnlyReferenceModelAction)
-from nsync.actions import CsvSyncActionsDecoder, CsvSyncActionsEncoder
-from nsync.actions import SyncActions, ActionsBuilder, ModelAction, CsvActionsBuilder
+    DeleteIfOnlyReferenceModelAction,
+    SyncActions,
+    ActionsBuilder,
+    ModelAction)
 from nsync.models import ExternalSystem, ExternalKeyMapping
 from tests.models import TestPerson, TestHouse
 
@@ -34,31 +35,6 @@ class TestSyncActions(TestCase):
         self.assertIn('u*', str(SyncActions(update=True, force=True)))
         self.assertIn('d*', str(SyncActions(delete=True, force=True)))
         self.assertIn('cu*', str(SyncActions(create=True, update=True, force=True)))
-
-class TestCsvSyncActionsEncoder(TestCase):
-    def test_it_encodes_as_expected(self):
-        self.assertEqual('c', CsvSyncActionsEncoder.encode(SyncActions(create=True)))
-        self.assertEqual('u', CsvSyncActionsEncoder.encode(SyncActions(update=True)))
-        self.assertEqual('u*', CsvSyncActionsEncoder.encode(SyncActions(update=True, force=True)))
-        self.assertEqual('d', CsvSyncActionsEncoder.encode(SyncActions(delete=True)))
-        self.assertEqual('d*', CsvSyncActionsEncoder.encode(SyncActions(delete=True, force=True)))
-
-
-class TestCsvSyncActionsDecoder(TestCase):
-    def test_it_is_case_insensitive_when_decoding(self):
-        self.assertTrue(CsvSyncActionsDecoder.decode('c').create)
-        self.assertTrue(CsvSyncActionsDecoder.decode('C').create)
-        self.assertTrue(CsvSyncActionsDecoder.decode('u').update)
-        self.assertTrue(CsvSyncActionsDecoder.decode('U').update)
-        self.assertTrue(CsvSyncActionsDecoder.decode('d').delete)
-        self.assertTrue(CsvSyncActionsDecoder.decode('D').delete)
-
-    def test_it_produces_object_with_no_actions_if_input_invalid(self):
-        result = CsvSyncActionsDecoder.decode(123)
-        self.assertFalse(result.create)
-        self.assertFalse(result.update)
-        self.assertFalse(result.delete)
-        self.assertFalse(result.force)
 
 
 class TestModelAction(TestCase):
@@ -167,48 +143,6 @@ class TestModelAction(TestCase):
         sut = ModelAction(TestHouse, 'address', fields)
         sut.update_from_fields(house, True)
         self.assertEqual(jack, house.owner)
-
-
-class TestCsvActionsBuilder(TestCase):
-    def setUp(self):
-        self.model = MagicMock()
-        self.sut = CsvActionsBuilder(self.model)
-
-        self.dict_with_defaults = {
-            'action_flags': CsvSyncActionsEncoder().encode(SyncActions()),
-            'match_field_name': 'field1',
-            'field1': ''}
-
-    @patch('nsync.actions.CsvSyncActionsDecoder')
-    def test_from_dict_maps_to_build_correctly(self, ActionDecoder):
-        action_flags_mock = MagicMock()
-        match_field_name_mock = MagicMock()
-        external_key_mock = MagicMock()
-
-        with patch.object(self.sut, 'build') as build_method:
-            result = self.sut.from_dict({
-                'action_flags': action_flags_mock,
-                'match_field_name': match_field_name_mock,
-                'external_key': external_key_mock,
-                'other_key': 'value'})
-            ActionDecoder.decode.assert_called_with(action_flags_mock)
-            build_method.assert_called_with(
-                ActionDecoder.decode.return_value,
-                match_field_name_mock,
-                external_key_mock,
-                {'other_key': 'value'})
-            self.assertEqual(build_method.return_value, result)
-
-    def test_returns_an_empty_list_if_no_actions_in_input(self):
-        self.assertEqual([], self.sut.from_dict(None))
-
-    def test_it_raises_an_error_if_the_action_flag_key_is_not_in_values(self):
-        with self.assertRaises(KeyError):
-            self.sut.from_dict({'not_matched': 'value'})
-
-    def test_it_raises_an_error_if_the_match_field_key_is_not_in_values(self):
-        with self.assertRaises(KeyError):
-            self.sut.from_dict({'action_flags': ''})
 
 
 class TestActionsBuilder(TestCase):

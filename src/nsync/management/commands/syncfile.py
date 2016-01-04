@@ -2,8 +2,7 @@ from django.core.management.base import BaseCommand, CommandError
 import os
 import csv
 
-from nsync.sync import ExternalSystemHelper, ModelFinder
-from nsync.actions import CsvActionsBuilder
+from .utils import ExternalSystemHelper, ModelFinder, CsvActionsBuilder
 from nsync.policies import BasicSyncPolicy, TransactionSyncPolicy
 
 
