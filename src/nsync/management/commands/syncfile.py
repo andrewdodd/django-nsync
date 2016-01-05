@@ -51,7 +51,10 @@ class Command(BaseCommand):
         with open(filename) as f:
             # TODO - Review - This indirection is only due to issues in
             # getting the mocks in the tests to work
-            SyncFileAction.sync(external_system, model, f, options['as_transaction'])
+            SyncFileAction.sync(external_system,
+                                model,
+                                f,
+                                options['as_transaction'])
 
 
 class SyncFileAction:

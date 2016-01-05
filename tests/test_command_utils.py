@@ -1,12 +1,15 @@
-from unittest.mock import MagicMock, patch, ANY
+from unittest.mock import MagicMock, patch
 
 from django.core.management.base import CommandError
 from django.test import TestCase
-
-
 from nsync.actions import SyncActions
-from nsync.management.commands.utils import ExternalSystemHelper, ModelFinder, SupportedFileChecker
-from nsync.management.commands.utils import CsvSyncActionsDecoder, CsvSyncActionsEncoder, CsvActionFactory
+from nsync.management.commands.utils import (
+    ExternalSystemHelper,
+    ModelFinder,
+    SupportedFileChecker,
+    CsvSyncActionsDecoder,
+    CsvSyncActionsEncoder,
+    CsvActionFactory)
 
 
 class TestExternalSystemHelper(TestCase):
@@ -14,16 +17,18 @@ class TestExternalSystemHelper(TestCase):
         with self.assertRaises(CommandError):
             ExternalSystemHelper.find('')
 
-    def test_find_raises_error_if_external_system_not_found_when_create_disabled(self):
+    def test_find_raises_error_if_external_system_not_found(self):
         with self.assertRaises(CommandError):
             ExternalSystemHelper.find('systemName', False)
 
     @patch('nsync.management.commands.utils.ExternalSystem')
-    def test_find_creates_external_system_if_not_found_and_create_is_true(self, ExternalSystem):
+    def test_find_creates_external_system_if_not_found_and_create_is_true(
+            self, ExternalSystem):
         ExternalSystem.DoesNotExist = Exception
         ExternalSystem.objects.get.side_effect = ExternalSystem.DoesNotExist
         ExternalSystemHelper.find('systemName', True)
-        ExternalSystem.objects.create.assert_called_with(name='systemName', description='systemName')
+        ExternalSystem.objects.create.assert_called_with(
+            name='systemName', description='systemName')
 
 
 class TestModelFinder(TestCase):
@@ -55,11 +60,16 @@ class TestSupportedFileChecker(TestCase):
 
 class TestCsvSyncActionsEncoder(TestCase):
     def test_it_encodes_as_expected(self):
-        self.assertEqual('c', CsvSyncActionsEncoder.encode(SyncActions(create=True)))
-        self.assertEqual('u', CsvSyncActionsEncoder.encode(SyncActions(update=True)))
-        self.assertEqual('u*', CsvSyncActionsEncoder.encode(SyncActions(update=True, force=True)))
-        self.assertEqual('d', CsvSyncActionsEncoder.encode(SyncActions(delete=True)))
-        self.assertEqual('d*', CsvSyncActionsEncoder.encode(SyncActions(delete=True, force=True)))
+        self.assertEqual('c', CsvSyncActionsEncoder.encode(
+            SyncActions(create=True)))
+        self.assertEqual('u', CsvSyncActionsEncoder.encode(
+            SyncActions(update=True)))
+        self.assertEqual('u*', CsvSyncActionsEncoder.encode(
+            SyncActions(update=True, force=True)))
+        self.assertEqual('d', CsvSyncActionsEncoder.encode(
+            SyncActions(delete=True)))
+        self.assertEqual('d*', CsvSyncActionsEncoder.encode(
+            SyncActions(delete=True, force=True)))
 
 
 class TestCsvSyncActionsDecoder(TestCase):
@@ -119,4 +129,3 @@ class TestCsvActionFactory(TestCase):
     def test_it_raises_an_error_if_the_match_field_key_is_not_in_values(self):
         with self.assertRaises(KeyError):
             self.sut.from_dict({'action_flags': ''})
-

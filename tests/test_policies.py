@@ -1,7 +1,6 @@
-
-from django.test import TestCase
 from unittest.mock import MagicMock, call
 
+from django.test import TestCase
 from nsync.policies import BasicSyncPolicy, OrderedSyncPolicy
 
 

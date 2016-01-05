@@ -105,8 +105,9 @@ class ModelAction:
         for attribute, get_by in referential_attributes.items():
             try:
                 field = object._meta.get_field(attribute)
-                # see: https://docs.djangoproject.com/en/1.9/ref/models/meta/#migrating-old-meta-api
-                # for migration advice of the get_field_by_name() call
+                # For migration advice of the get_field_by_name() call see [1]
+                # [1]: https://docs.djangoproject.com/en/1.9/ref/models/meta/#migrating-old-meta-api
+
                 if (not field.auto_created or field.concrete) \
                         and field.related_model:
                     if not force:

@@ -1,23 +1,25 @@
-
-from django.test import TestCase
-from unittest.mock import MagicMock, call
-
 from django.contrib.contenttypes.fields import ContentType
+from django.test import TestCase
 from nsync.models import ExternalSystem, ExternalKeyMapping
 
 from tests.models import TestPerson
+
 
 class TestExternalSystem(TestCase):
     def test_it_uses_name_for_string(self):
         self.assertEqual('SystemName', str(ExternalSystem(name='SystemName')))
 
-    def test_it_returns_the_human_readable_description_instead_of_name_if_available(self):
-        sut = ExternalSystem(name='SystemName', description='SystemDescription')
+    def test_it_returns_the_description_instead_of_name_if_available(
+            self):
+        sut = ExternalSystem(name='SystemName',
+                             description='SystemDescription')
         self.assertEqual('SystemDescription', str(sut))
+
 
 class TestExternalKeyMapping(TestCase):
     def setUp(self):
-        self.external_system = ExternalSystem.objects.create(name='ExternalSystemName')
+        self.external_system = ExternalSystem.objects.create(
+            name='ExternalSystemName')
 
     def test_it_returns_as_useful_string(self):
         john = TestPerson.objects.create(first_name='John')
@@ -28,7 +30,7 @@ class TestExternalKeyMapping(TestCase):
             content_type=content_type,
             content_object=john,
             object_id=john.id)
-        
+
         result = str(sut)
         self.assertIn('ExternalSystemName', result)
         self.assertIn('Person123', result)

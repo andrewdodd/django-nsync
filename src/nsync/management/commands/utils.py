@@ -3,7 +3,7 @@ from django.apps.registry import apps
 import csv
 
 from nsync.models import ExternalSystem
-from nsync.actions import ActionFactory
+from nsync.actions import ActionFactory, SyncActions
 
 
 class SupportedFileChecker:
@@ -76,7 +76,6 @@ class CsvSyncActionsEncoder:
             '*' if sync_actions.force else '')
 
 
-from nsync.actions import SyncActions
 class CsvSyncActionsDecoder:
     @staticmethod
     def decode(action_flags):

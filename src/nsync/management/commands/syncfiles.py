@@ -3,15 +3,16 @@ import os
 import csv
 import argparse
 import re
-
-from .utils import (ExternalSystemHelper, ModelFinder, SupportedFileChecker, 
-                    CsvActionFactory)
+from .utils import (
+    ExternalSystemHelper,
+    ModelFinder,
+    SupportedFileChecker,
+    CsvActionFactory)
 from nsync.policies import (
     BasicSyncPolicy,
     OrderedSyncPolicy,
     TransactionSyncPolicy
-    )
-
+)
 
 (DEFAULT_FILE_REGEX) = (r'(?P<external_system>[a-zA-Z0-9]+)_'
                         r'(?P<app_name>[a-zA-Z0-9]+)_'
