@@ -5,7 +5,7 @@ import argparse
 import re
 
 from .utils import (ExternalSystemHelper, ModelFinder, SupportedFileChecker, 
-                    CsvActionsBuilder)
+                    CsvActionFactory)
 from nsync.policies import (
     BasicSyncPolicy,
     OrderedSyncPolicy,
@@ -92,7 +92,7 @@ class TestableCommand:
             model = ModelFinder.find(app, model)
 
             reader = csv.DictReader(f)
-            builder = CsvActionsBuilder(model, external_system)
+            builder = CsvActionFactory(model, external_system)
             for d in reader:
                 actions.extend(builder.from_dict(d))
         return actions

@@ -217,7 +217,7 @@ class DeleteExternalReferenceAction:
             external_key=self.external_key).delete()
 
 
-class ActionsBuilder:
+class ActionFactory:
     def __init__(self, model, external_system=None):
         self.model = model
         self.external_system = external_system

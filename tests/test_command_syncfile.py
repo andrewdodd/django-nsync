@@ -19,9 +19,9 @@ class TestSyncFileCommand(TestCase):
 
 
 class TestSyncFileAction(TestCase):
-    @patch('nsync.management.commands.syncfile.CsvActionsBuilder')
+    @patch('nsync.management.commands.syncfile.CsvActionFactory')
     @patch('csv.DictReader')
-    def test_data_flow(self, DictReader, ActionsBuilder):
+    def test_data_flow(self, DictReader, CsvActionFactory):
         file = MagicMock()
         row = MagicMock()
         row_provider = MagicMock()
@@ -30,18 +30,18 @@ class TestSyncFileAction(TestCase):
         model_mock = MagicMock()
         external_system_mock = MagicMock()
         action_mock = MagicMock()
-        ActionsBuilder.return_value.from_dict.return_value = [action_mock]
+        CsvActionFactory.return_value.from_dict.return_value = [action_mock]
         SyncFileAction.sync(external_system_mock, model_mock, file, False)
         DictReader.assert_called_with(file)
-        ActionsBuilder.assert_called_with(model_mock, external_system_mock)
+        CsvActionFactory.assert_called_with(model_mock, external_system_mock)
 
-        ActionsBuilder.return_value.from_dict.assert_called_with(row)
+        CsvActionFactory.return_value.from_dict.assert_called_with(row)
         action_mock.execute.assert_called_once_with()
 
     @patch('nsync.management.commands.syncfile.TransactionSyncPolicy')
     @patch('nsync.management.commands.syncfile.BasicSyncPolicy')
-    @patch('nsync.management.commands.syncfile.CsvActionsBuilder')
-    def test_it_wraps_the_basic_policy_in_a_transaction_policy_if_configured(self, CsvActionsBuilder,
+    @patch('nsync.management.commands.syncfile.CsvActionFactory')
+    def test_it_wraps_the_basic_policy_in_a_transaction_policy_if_configured(self, CsvActionFactory,
             BasicSyncPolicy, TransactionSyncPolicy):
         SyncFileAction.sync(MagicMock(), MagicMock(), MagicMock(), True)
         TransactionSyncPolicy.assert_called_with(BasicSyncPolicy.return_value)

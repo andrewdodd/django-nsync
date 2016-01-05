@@ -6,7 +6,7 @@ from django.test import TestCase
 
 from nsync.actions import SyncActions
 from nsync.management.commands.utils import ExternalSystemHelper, ModelFinder, SupportedFileChecker
-from nsync.management.commands.utils import CsvSyncActionsDecoder, CsvSyncActionsEncoder, CsvActionsBuilder
+from nsync.management.commands.utils import CsvSyncActionsDecoder, CsvSyncActionsEncoder, CsvActionFactory
 
 
 class TestExternalSystemHelper(TestCase):
@@ -79,10 +79,10 @@ class TestCsvSyncActionsDecoder(TestCase):
         self.assertFalse(result.force)
 
 
-class TestCsvActionsBuilder(TestCase):
+class TestCsvActionFactory(TestCase):
     def setUp(self):
         self.model = MagicMock()
-        self.sut = CsvActionsBuilder(self.model)
+        self.sut = CsvActionFactory(self.model)
 
         self.dict_with_defaults = {
             'action_flags': CsvSyncActionsEncoder().encode(SyncActions()),

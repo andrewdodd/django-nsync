@@ -3,6 +3,7 @@ from django.apps.registry import apps
 import csv
 
 from nsync.models import ExternalSystem
+from nsync.actions import ActionFactory
 
 
 class SupportedFileChecker:
@@ -46,8 +47,7 @@ class ExternalSystemHelper:
                     name))
 
 
-from nsync.actions import ActionsBuilder
-class CsvActionsBuilder(ActionsBuilder):
+class CsvActionFactory(ActionFactory):
     action_flags_label = 'action_flags'
     match_field_name_label = 'match_field_name'
     external_key_label = 'external_key'

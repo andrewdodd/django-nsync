@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand, CommandError
 import os
 import csv
 
-from .utils import ExternalSystemHelper, ModelFinder, CsvActionsBuilder
+from .utils import ExternalSystemHelper, ModelFinder, CsvActionFactory
 from nsync.policies import BasicSyncPolicy, TransactionSyncPolicy
 
 
@@ -58,7 +58,7 @@ class SyncFileAction:
     @staticmethod
     def sync(external_system, model, file, use_transaction):
         reader = csv.DictReader(file)
-        builder = CsvActionsBuilder(model, external_system)
+        builder = CsvActionFactory(model, external_system)
         actions = []
         for d in reader:
             actions.extend(builder.from_dict(d))

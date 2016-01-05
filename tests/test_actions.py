@@ -12,7 +12,7 @@ from nsync.actions import (
     AlignExternalReferenceAction,
     DeleteIfOnlyReferenceModelAction,
     SyncActions,
-    ActionsBuilder,
+    ActionFactory,
     ModelAction)
 from nsync.models import ExternalSystem, ExternalKeyMapping
 from tests.models import TestPerson, TestHouse
@@ -145,10 +145,10 @@ class TestModelAction(TestCase):
         self.assertEqual(jack, house.owner)
 
 
-class TestActionsBuilder(TestCase):
+class TestActionFactory(TestCase):
     def setUp(self):
         self.model = MagicMock()
-        self.sut = ActionsBuilder(self.model)
+        self.sut = ActionFactory(self.model)
 
     @patch('nsync.actions.ModelAction')
     def test_it_creates_a_base_model_action_if_no_action_flags_are_included(self, ModelAction):
@@ -189,13 +189,13 @@ class TestActionsBuilder(TestCase):
         self.assertIs(False, self.sut.is_externally_mappable("a mappable key"))
 
     def test_it_considers_non_strings_as_not_externally_mappable(self):
-        self.assertFalse(ActionsBuilder(ANY, ANY).is_externally_mappable(None))
-        self.assertFalse(ActionsBuilder(ANY, ANY).is_externally_mappable(0))
-        self.assertFalse(ActionsBuilder(ANY, ANY).is_externally_mappable(1))
-        self.assertFalse(ActionsBuilder(ANY, ANY).is_externally_mappable(ANY))
+        self.assertFalse(ActionFactory(ANY, ANY).is_externally_mappable(None))
+        self.assertFalse(ActionFactory(ANY, ANY).is_externally_mappable(0))
+        self.assertFalse(ActionFactory(ANY, ANY).is_externally_mappable(1))
+        self.assertFalse(ActionFactory(ANY, ANY).is_externally_mappable(ANY))
 
     def test_it_considers_non_blank_strings_as_externally_mappable(self):
-        self.assertTrue(ActionsBuilder(ANY, ANY).is_externally_mappable('a mappable key'))
+        self.assertTrue(ActionFactory(ANY, ANY).is_externally_mappable('a mappable key'))
 
     @patch('nsync.actions.AlignExternalReferenceAction')
     @patch('nsync.actions.CreateModelAction')
@@ -203,7 +203,7 @@ class TestActionsBuilder(TestCase):
             self, CreateModelAction, AlignExternalReferenceAction):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
-        sut = ActionsBuilder(model_mock, external_system_mock)
+        sut = ActionFactory(model_mock, external_system_mock)
         result = sut.build(SyncActions(create=True), 'field', 'external_key', {'field': 'value'})
         AlignExternalReferenceAction.assert_called_with(
             external_system_mock, model_mock,
@@ -217,7 +217,7 @@ class TestActionsBuilder(TestCase):
             self, UpdateModelAction, AlignExternalReferenceAction):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
-        sut = ActionsBuilder(model_mock, external_system_mock)
+        sut = ActionFactory(model_mock, external_system_mock)
         result = sut.build(SyncActions(update=True), 'field', 'external_key', {'field': 'value'})
         AlignExternalReferenceAction.assert_called_with(
             external_system_mock, model_mock,
@@ -229,7 +229,7 @@ class TestActionsBuilder(TestCase):
     def test_it_creates_delete_external_reference_for_delete_if_externally_mappable(self, DeleteExternalReferenceAction):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
-        sut = ActionsBuilder(model_mock, external_system_mock)
+        sut = ActionFactory(model_mock, external_system_mock)
         result = sut.build(SyncActions(delete=True), 'field', 'external_key', {'field': 'value'})
         DeleteExternalReferenceAction.assert_called_with(
             external_system_mock, 'external_key')
@@ -239,7 +239,7 @@ class TestActionsBuilder(TestCase):
     def test_it_creates_delete_action_for_forced_delete_if_externally_mappable(self, DeleteModelAction):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
-        sut = ActionsBuilder(model_mock, external_system_mock)
+        sut = ActionFactory(model_mock, external_system_mock)
         result = sut.build(SyncActions(delete=True, force=True), 'field', 'external_key', {'field': 'value'})
         DeleteModelAction.assert_called_with(model_mock, 'field', {'field': 'value'})
         self.assertIn(DeleteModelAction.return_value, result)
@@ -250,7 +250,7 @@ class TestActionsBuilder(TestCase):
             self, DeleteModelAction, DeleteIfOnlyReferenceModelAction):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
-        sut = ActionsBuilder(model_mock, external_system_mock)
+        sut = ActionFactory(model_mock, external_system_mock)
         result = sut.build(SyncActions(delete=True), 'field', 'external_key', {'field': 'value'})
         DeleteModelAction.assert_called_with(model_mock, 'field', {'field': 'value'})
         DeleteIfOnlyReferenceModelAction.assert_called_with(
