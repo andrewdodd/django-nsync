@@ -28,6 +28,11 @@ Includes:
 
   - Ships with commands to process a single CSV file or multiple CSV files
 
+- No need for more code
+
+  - Nsync does not require you to inherit from special classes, add 'model
+  mapping' objects or really define anything in Python
+
 Not-included:
 
 - Export (to CSV or anything else for that matter)

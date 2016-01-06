@@ -38,9 +38,10 @@ Create your CSV file(s) with the data you need to synchronise with::
     Some,Other-Guy,E4321,d,employee_id
 
 
-Run one of the built in commands::
+Run one of the built in command (i.e. if you have a "Winner" Django model)s::
 
     > python manage.py syncfile 'HRSystem' 'prizes' 'Winner' /tmp/the/file.csv
 
 Check your application to see that Andrew Dodd is now a Winner and that other guy was deleted.
 
+**NOTE WELL:** There is no need to write any Python to make this work!
