@@ -77,11 +77,12 @@ Now you can make your changes locally.
 5. When you're done making changes, check that your changes pass flake8 and the
 tests, including testing other Python versions with tox::
 
-    $ flake8 nsync tests
+    $ flake8 src tests
     $ python setup.py test
     $ tox
 
-To get flake8 and tox, just pip install them into your virtualenv.
+To get flake8 and tox, just pip install them into your virtualenv. NB: Don't
+ worry about flake8 issues in the migrations files or if URLs are too long.
 
 6. Commit your changes and push your branch to GitHub::
 
