@@ -30,8 +30,7 @@ Includes:
 
 - No need for more code
 
-  - Nsync does not require you to inherit from special classes, add 'model
-  mapping' objects or really define anything in Python
+  - Nsync does not require you to inherit from special classes, add 'model mapping' objects or really define anything in Python
 
 Not-included:
 
