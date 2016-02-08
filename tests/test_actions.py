@@ -7,6 +7,7 @@ from nsync.actions import (
     CreateModelAction,
     UpdateModelAction,
     DeleteModelAction,
+    CreateModelWithReferenceAction,
     DeleteExternalReferenceAction,
     AlignExternalReferenceAction,
     DeleteIfOnlyReferenceModelAction,
@@ -358,6 +359,103 @@ class TestCreateModelAction(TestCase):
         self.assertEqual('None, he bald!', result.hair_colour)
 
 
+class TestCreateModelWithReferenceAction(TestCase):
+    """
+    These tests try to cover off the following matrix of behaviour:
+    +---------------+---------------------+----------------------------------------+
+    | Model object  |   External Link     | Behaviour / Outcome desired            |
+    +---------------+---------------------+----------------------------------------+
+    |               |                     | The standard case. The model object    |
+    |      No       |      No             | should be created, and if successful   |
+    |               |                     | an external linkage object should be   |
+    |               |                     |  created to point to it.               |
+    +------------------------------------------------------------------------------+
+    |               |                     | Object already exists case. An         |
+    |    Exists     |      No             | external linkage object is created     |
+    |               |                     | and pointed at the existing object.    |
+    +------------------------------------------------------------------------------+
+    |               |                     | A previously made object was deleted.  |
+    |     No        |     Exists          | Create the model object and update     |
+    |               |                     | the linkage object to point at it.     |
+    +------------------------------------------------------------------------------+
+    |   Exists      | Exists, points  to  | Already pointing to matching / created |
+    |               |  matching object    | object. Do nothing. NOT TESTED         |
+    +------------------------------------------------------------------------------+
+    |               | Exists but points   | Pointing to a non-matching object. Do  |
+    |   Exists      | to some 'other'     | nothing but potentially log/warn of    |
+    |               | object              | the discrepancy                        |
+    +---------------+---------------------+----------------------------------------+
+    """
+    def setUp(self):
+        self.external_system = ExternalSystem.objects.create(name='System')
+
+    def test_it_creates_the_model_object(self):
+        sut = CreateModelWithReferenceAction(
+            self.external_system,
+            TestPerson, 'PersonJohn', 'first_name',
+            {'first_name': 'John', 'last_name': 'Smith'})
+        sut.execute()
+        self.assertEqual(1, TestPerson.objects.count())
+
+    def test_it_creates_the_reference(self):
+        sut = CreateModelWithReferenceAction(
+            self.external_system,
+            TestPerson, 'PersonJohn', 'first_name',
+            {'first_name': 'John', 'last_name': 'Smith'})
+        sut.execute()
+        self.assertEqual(1, ExternalKeyMapping.objects.count())
+
+    def test_it_creates_the_reference_if_the_model_object_already_exists(self):
+        john = TestPerson.objects.create(first_name='John')
+        sut = CreateModelWithReferenceAction(
+            self.external_system,
+            TestPerson, 'PersonJohn', 'first_name',
+            {'first_name': 'John', 'last_name': 'Smith'})
+        sut.execute()
+        self.assertEqual(1, TestPerson.objects.count())
+        self.assertEqual(1, ExternalKeyMapping.objects.count())
+        self.assertEqual(john, ExternalKeyMapping.objects.first().content_object)
+
+    def test_it_updates_the_reference_if_the_model_does_not_exist(self):
+        mapping = ExternalKeyMapping.objects.create(
+            external_system=self.external_system,
+            external_key='PersonJohn',
+            content_type=ContentType.objects.get_for_model(TestPerson),
+            object_id=0)
+        sut = CreateModelWithReferenceAction(
+            self.external_system,
+            TestPerson, 'PersonJohn', 'first_name',
+            {'first_name': 'John', 'last_name': 'Smith'})
+        sut.execute()
+        self.assertEqual(1, ExternalKeyMapping.objects.count())
+        mapping.refresh_from_db()
+        self.assertNotEqual(None, mapping.content_object)
+
+    def test_it_does_not_create_model_object_if_reference_is_linked_to_model(self):
+        """
+        A model object should not be created if an external key mapping
+        exists, even if the mapping and the match fields do not agree.
+        """
+        # create a reference & model objet
+        CreateModelWithReferenceAction(
+            self.external_system,
+            TestPerson, 'PersonJohn', 'first_name',
+            {'first_name': 'John', 'last_name': 'Smith'}).execute()
+
+        # Attempt to create another object with different data but same external key
+        CreateModelWithReferenceAction(
+            self.external_system,
+            TestPerson, 'PersonJohn', 'first_name',
+            {'first_name': 'David', 'last_name': 'Jones'}).execute()
+
+        linked_person = ExternalKeyMapping.objects.first().content_object
+        self.assertEqual('John', linked_person.first_name)
+        self.assertEqual('Smith', linked_person.last_name)
+        self.assertEqual(1, TestPerson.objects.count())
+        self.assertEqual(1, ExternalKeyMapping.objects.count())
+
+
+
 class TestUpdateModelAction(TestCase):
     def test_it_returns_the_object_even_if_nothing_updated(self):
         john = TestPerson.objects.create(first_name='John')
@@ -623,3 +721,5 @@ class TestActionTypes(TestCase):
             self):
         self.assertEquals('delete',
                           DeleteExternalReferenceAction(ANY, ANY).type)
+
+        
