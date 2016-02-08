@@ -137,7 +137,6 @@ class CreateModelAction(ModelAction):
 
     def execute(self):
         if self.find_objects().exists():
-            # already exists, return None
             return self.find_objects().get()
 
         obj = self.model()

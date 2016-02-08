@@ -322,7 +322,7 @@ class TestCreateModelAction(TestCase):
         result = sut.execute()
         self.assertEqual(TestPerson.objects.first(), result)
 
-    def test_it_does_not_create_if_object_already_exists(self):
+    def test_it_does_not_create_if_matching_object_exists(self):
         TestPerson.objects.create(first_name='John', last_name='Smith')
         sut = CreateModelAction(TestPerson, 'first_name',
                                 {'first_name': 'John', 'last_name': 'Smith'})
@@ -337,14 +337,14 @@ class TestCreateModelAction(TestCase):
         self.assertEqual(1, TestPerson.objects.count())
         self.assertEquals('Jackson', TestPerson.objects.first().last_name)
 
-    def test_it_does_not_return_the_object_if_it_did_not_create_it(self):
+    def test_it_returns_the_object_even_if_it_did_not_create_it(self):
         john = TestPerson.objects.create(first_name='John', last_name='Smith')
         sut = CreateModelAction(TestPerson, 'first_name',
                                 {'first_name': 'John', 'last_name': 'Smith'})
         result = sut.execute()
         self.assertEqual(john, result)
 
-    def test_creates_uses_all_included_fields_and_overrides_defaults(
+    def test_it_uses_all_included_fields_and_overrides_defaults(
             self):
         sut = CreateModelAction(
             TestPerson,
