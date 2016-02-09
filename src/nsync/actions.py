@@ -239,6 +239,76 @@ class UpdateModelAction(ModelAction):
             return None
 
 
+class UpdateModelWithReferenceAction(UpdateModelAction):
+    """
+    Action to create a model object if it does not exist, and to create or
+    update an external reference to the object.
+    """
+
+    def __init__(self, external_system, model, external_key, match_field_name, 
+            fields={}, force_update=False):
+        """
+
+        :param external_system (model object): The external system to create or
+            update the reference for.
+        :param model (class): The model class the reference should be created
+            or updated for.
+        :param external_key (str): The reference value from the external
+            system (i.e. the 'id' that the external system uses to refer to the
+            model object).
+        :param match_field_name (str): The name of a model attribute/field
+            to use to find the object to update. This must be a key in the
+            provided fields.
+        :param fields(dict): The set of fields to update, with the values to
+            update them to.
+        :return: The model object provided by the action
+        """
+        super(UpdateModelWithReferenceAction, self).__init__(
+            model, match_field_name, fields, force_update)
+        self.external_system = external_system
+        self.external_key = external_key
+
+    def execute(self):
+        try:
+            mapping = ExternalKeyMapping.objects.get(
+                external_system=self.external_system,
+                external_key=self.external_key)
+        except ExternalKeyMapping.DoesNotExist:
+            mapping = ExternalKeyMapping(
+                external_system=self.external_system,
+                external_key=self.external_key)
+
+        linked_object = mapping.content_object
+
+        matched_object = None
+        if self.find_objects().exists():
+            matched_object = self.find_objects().get()
+
+        # If both matched and linked objects exist, get rid of the matched
+        if matched_object and linked_object:
+            matched_object.delete()
+
+        # Choose the most appropriate object to update
+        if linked_object:
+            model_obj = linked_object
+        elif matched_object:
+            model_obj = matched_object
+        else:
+            # No object to update
+            return
+
+        if model_obj:
+            self.update_from_fields(model_obj, self.force_update)
+            model_obj.save()
+
+        if model_obj:
+            mapping.content_type = ContentType.objects.get_for_model(
+                self.model)
+            mapping.content_object = model_obj
+            mapping.object_id = model_obj.id
+            mapping.save()
+
+
 class DeleteIfOnlyReferenceModelAction(ModelAction):
     """
     This action only deletes the pointed to object if the key mapping

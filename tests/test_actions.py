@@ -8,6 +8,7 @@ from nsync.actions import (
     UpdateModelAction,
     DeleteModelAction,
     CreateModelWithReferenceAction,
+    UpdateModelWithReferenceAction,
     DeleteExternalReferenceAction,
     AlignExternalReferenceAction,
     DeleteIfOnlyReferenceModelAction,
@@ -499,6 +500,105 @@ class TestUpdateModelAction(TestCase):
         sut.execute()
         john.refresh_from_db()
         self.assertEquals('Jackson', john.last_name)
+
+
+class TestUpdateModelWithReferenceAction(TestCase):
+    """
+    These tests try to cover off the following matrix of behaviour:
+    +---------------+---------------------+----------------------------------------+
+    | Model object  |   External Link     | Behaviour / Outcome desired            |
+    +---------------+---------------------+----------------------------------------+
+    |      No       |      No             | Do nothing. No effect for update       |
+    +------------------------------------------------------------------------------+
+    |               |                     | Do normal update.                      |
+    |    Exists     |      No             | Create linkage object.                 |
+    +------------------------------------------------------------------------------+
+    |               |                     | !!! Should probably not happen !!!     |
+    |     No        |     Exists          | Do nothing.                            |
+    |               |                     | (Possibly remove link?)                |
+    +------------------------------------------------------------------------------+
+    |   Exists      | Exists, points  to  | Do normal update.                      |
+    |               |  matching object    | NOT TESTED                             |
+    +------------------------------------------------------------------------------+
+    |               | Exists but points   | This case is tricky.                   |
+    |   Exists      | to some 'other'     | Do the update normally, obeying force  |
+    |               | object              | option.                                |
+    |               |                     | IF there is also a matching object (   |
+    |               |                     | that is not the linked object), not    |
+    |               |                     | sure what to do, for now delete the    |
+    |               |                     | non-linked object.                     |
+    +---------------+---------------------+----------------------------------------+
+    """
+    def setUp(self):
+        self.external_system = ExternalSystem.objects.create(name='System')
+        self.update_john = UpdateModelWithReferenceAction(
+            self.external_system,
+            TestPerson, 'PersonJohn', 'first_name',
+            {'first_name': 'John', 'last_name': 'Smith'},
+            True)
+
+    def test_it_does_not_create_a_reference_if_object_does_not_exist(self):
+        self.update_john.execute()
+        self.assertEqual(0, ExternalKeyMapping.objects.count())
+
+    def test_it_updates_the_object(self):
+        john = TestPerson.objects.create(first_name='John')
+        self.update_john.execute()
+        john.refresh_from_db()
+        self.assertEqual(john.first_name, 'John')
+        self.assertEqual(john.last_name, 'Smith')
+
+    def test_it_creates_the_reference_if_the_model_object_already_exists(self):
+        john = TestPerson.objects.create(first_name='John')
+        self.update_john.execute()
+        self.assertEqual(1, ExternalKeyMapping.objects.count())
+        mapping = ExternalKeyMapping.objects.first()
+        self.assertEqual(self.external_system, mapping.external_system)
+        self.assertEqual('PersonJohn', mapping.external_key)
+        self.assertEqual(john, mapping.content_object)
+
+    def test_it_updates_the_linked_object(self):
+        """
+        Tests that even if the match field does not 'match', the already
+        pointed to object is updated.
+        """
+        person = TestPerson.objects.create(first_name='Not John')
+        mapping = ExternalKeyMapping.objects.create(
+            external_system=self.external_system,
+            external_key='PersonJohn',
+            content_type = ContentType.objects.get_for_model(
+                TestPerson),
+            content_object = person,
+            object_id = person.id)
+
+        self.update_john.execute()
+        person.refresh_from_db()
+        self.assertEqual(person.first_name, 'John')
+        self.assertEqual(person.last_name, 'Smith')
+
+    def test_it_removes_the_matched_object_if_there_is_a_linked_object(self):
+        """
+        Tests that if there is a 'linked' object to update, it removes any
+        'matched' objects in the process.
+        In this test, the "John Jackson" person should be deleted and the 
+        "Not John" person should be updated to be "John Smith"
+        """
+        matched_person = TestPerson.objects.create(first_name='John',
+                                                   last_name='Jackson')
+        linked_person = TestPerson.objects.create(first_name='Not John')
+        mapping = ExternalKeyMapping.objects.create(
+            external_system=self.external_system,
+            external_key='PersonJohn',
+            content_type = ContentType.objects.get_for_model(
+                TestPerson),
+            content_object = linked_person,
+            object_id = linked_person.id)
+
+        self.update_john.execute()
+        self.assertEqual(1, TestPerson.objects.count())
+        person = TestPerson.objects.first()
+        self.assertEqual(person.first_name, 'John')
+        self.assertEqual(person.last_name, 'Smith')
 
 
 class TestDeleteModelAction(TestCase):
