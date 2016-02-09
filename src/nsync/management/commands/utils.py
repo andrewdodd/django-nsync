@@ -49,20 +49,23 @@ class ExternalSystemHelper:
 
 class CsvActionFactory(ActionFactory):
     action_flags_label = 'action_flags'
-    match_field_name_label = 'match_field_name'
     external_key_label = 'external_key'
+    match_field_names_label = 'match_field_names'
+    match_field_names_delimiter = ' '
 
     def from_dict(self, raw_values):
         if not raw_values:
             return []
 
         action_flags = raw_values.pop(self.action_flags_label)
-        match_field_name = raw_values.pop(self.match_field_name_label)
+        match_field_names = raw_values.pop(self.match_field_names_label)
+        match_field_names = match_field_names.split(
+            self.match_field_names_delimiter)
         external_system_key = raw_values.pop(self.external_key_label, None)
 
         sync_actions = CsvSyncActionsDecoder.decode(action_flags)
 
-        return self.build(sync_actions, match_field_name,
+        return self.build(sync_actions, match_field_names,
                           external_system_key, raw_values)
 
 

@@ -126,7 +126,7 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         csv_file_obj = tempfile.NamedTemporaryFile(
             mode='w', prefix='TestSystem_tests_TestHouse_', suffix='.csv')
         csv_file_obj.writelines([
-            'action_flags,match_field_name,address,country\n',
+            'action_flags,match_field_names,address,country\n',
             'c,address,House1,Australia\n',  # Should have no effect
             'u,address,House2,Australia\n',  # Should update country
             'u,address,House3,Australia\n',  # Should have no effect
@@ -155,7 +155,7 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         csv_file_obj = tempfile.NamedTemporaryFile(
             mode='w', prefix='TestSystem_tests_TestHouse_', suffix='.csv')
         csv_file_obj.writelines([
-            'action_flags,match_field_name,address,country\n',
+            'action_flags,match_field_names,address,country\n',
             'd,address,House1,Australia\n',  # Should have no effect
             'd*,address,House2,Australia\n',  # Should delete
         ])
@@ -184,7 +184,7 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         csv_file_obj = tempfile.NamedTemporaryFile(
             mode='w', prefix='TestSystem_tests_TestHouse_', suffix='.csv')
         csv_file_obj.writelines([
-            'external_key,action_flags,match_field_name,address\n',
+            'external_key,action_flags,match_field_names,address\n',
             'House1Key,c,address,House1\n',  # Should create a key mapping
             'House2Key,u,address,House2\n',  # Should update existing mapping
             'House3Key,c,address,House3\n',
@@ -232,7 +232,7 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         csv_file_obj = tempfile.NamedTemporaryFile(
             mode='w', prefix='TestSystem_tests_TestHouse_', suffix='.csv')
         csv_file_obj.writelines([
-            'external_key,action_flags,match_field_name,address\n',
+            'external_key,action_flags,match_field_names,address\n',
             'House1Key,d,address,House1\n',
             # Should do nothing, as this does not have the final mapping
             'House2Key,d,address,House2\n',
@@ -265,7 +265,7 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         file1 = tempfile.NamedTemporaryFile(
             mode='w', prefix='TestSystem1_tests_TestHouse_', suffix='.csv')
         file1.writelines([
-            'action_flags,match_field_name,address,country\n',
+            'action_flags,match_field_names,address,country\n',
             'd*,address,House1,Australia\n',  # Should delete
         ])
         file1.seek(0)
@@ -273,7 +273,7 @@ class TestSyncSingleFileIntegrationTests(TestCase):
         file2 = tempfile.NamedTemporaryFile(
             mode='w', prefix='TestSystem2_tests_TestHouse_', suffix='.csv')
         file2.writelines([
-            'action_flags,match_field_name,address,country\n',
+            'action_flags,match_field_names,address,country\n',
             'c,address,House1,Australia\n',
             # Should attempt to create, but should be undone by delete above
         ])

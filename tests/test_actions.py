@@ -47,28 +47,41 @@ class TestModelAction(TestCase):
             ModelAction(None, None)
 
     # TODO - Perhaps update this to look for the attribute on the class?
-    def test_it_raises_an_error_if_matchfieldname_is_blank(self):
+    def test_it_raises_an_error_if_matchfieldname_is_empty(self):
         """
-        Test that an error is raises if an empty match_field_name
+        Test that an error is raises if an empty match_field_names
         value is provided, even if the fields dict has a matching key
         """
         with self.assertRaises(ValueError):
-            ModelAction(ANY, '', {'': 'value'})
+            ModelAction(ANY, [], {'': 'value'})
 
-    def test_creating_with_matchfieldname_not_in_fields_raises_error(self):
+    def test_it_raises_error_if_any_matchfieldname_not_in_fields(self):
         with self.assertRaises(ValueError):
-            ModelAction(ANY, 'matchfield', {'otherField': 'value'})
+            ModelAction(ANY, 
+                    ['matchingfield', 'missingfield'], 
+                    {'matchingfield': 'value'})
 
     def test_it_attempts_to_find_through_the_provided_model_class(self):
         model = MagicMock()
-        found_object = ModelAction(model, 'matchfield',
+        found_object = ModelAction(model, ['matchfield'],
                                    {'matchfield': 'value'}).find_objects()
         model.objects.filter.assert_called_once_with(matchfield='value')
         self.assertEqual(found_object, model.objects.filter.return_value)
 
+    def test_it_attempts_to_find_with_all_matchfields(self):
+        model = MagicMock()
+        found_object = ModelAction(
+            model,
+            ['matchfield1', 'matchfield2'],
+            {'matchfield1': 'value1', 'matchfield2': 'value2'}).find_objects()
+        model.objects.filter.assert_called_once_with(
+            matchfield1='value1',
+            matchfield2='value2')
+        self.assertEqual(found_object, model.objects.filter.return_value)
+
     def test_update_from_fields_changes_values_on_object(self):
         john = TestPerson(first_name='John')
-        ModelAction(TestPerson, 'last_name',
+        ModelAction(TestPerson, ['last_name'],
                     {'last_name': 'Smith'}).update_from_fields(john)
         self.assertEqual('Smith', john.last_name)
 
@@ -78,7 +91,7 @@ class TestModelAction(TestCase):
         house = TestHouse.objects.create(address='Bottom of the hill')
         fields = {'address': 'Bottom of the hill', 'owner=>first_name': 'Jill'}
 
-        sut = ModelAction(TestHouse, 'address', fields)
+        sut = ModelAction(TestHouse, ['address'], fields)
         sut.update_from_fields(house)
         self.assertEqual(person, house.owner)
 
@@ -88,7 +101,7 @@ class TestModelAction(TestCase):
         house = TestHouse.objects.create(address='Bottom of the hill')
         fields = {'address': 'Bottom of the hill', 'owner=>last_name': 'Jones'}
 
-        sut = ModelAction(TestHouse, 'address', fields)
+        sut = ModelAction(TestHouse, ['address'], fields)
         sut.update_from_fields(house)
         self.assertEqual(None, house.owner)
         logger.info.assert_called_with(ANY)
@@ -100,7 +113,7 @@ class TestModelAction(TestCase):
         TestPerson.objects.create(first_name="Jack", last_name="Jones")
         house = TestHouse.objects.create(address='Bottom of the hill')
         fields = {'address': 'Bottom of the hill', 'owner=>last_name': 'Jones'}
-        sut = ModelAction(TestHouse, 'address', fields)
+        sut = ModelAction(TestHouse, ['address'], fields)
         sut.update_from_fields(house)
         self.assertEqual(None, house.owner)
         logger.info.assert_called_with(ANY)
@@ -117,21 +130,21 @@ class TestModelAction(TestCase):
             'address': 'Bottom of the hill',
             'owner=>first_name': 'John',
             'owner=>last_name': 'Johnson'}
-        sut = ModelAction(TestHouse, 'address', fields)
+        sut = ModelAction(TestHouse, ['address'], fields)
         sut.update_from_fields(house)
         self.assertEqual(person, house.owner)
 
     def test_update_from_fields_does_not_update_values_that_are_not_empty(
             self):
         john = TestPerson(first_name='John', last_name='Smith')
-        ModelAction(TestPerson, 'last_name',
+        ModelAction(TestPerson, ['last_name'],
                     {'last_name': 'Jackson'}).update_from_fields(john)
         self.assertEqual('Smith', john.last_name)
 
     def test_update_from_fields_always_updates_fields_when_forced(
             self):
         john = TestPerson(first_name='John', last_name='Smith')
-        ModelAction(TestPerson, 'last_name',
+        ModelAction(TestPerson, ['last_name'],
                     {'last_name': 'Jackson'}).update_from_fields(john, True)
         self.assertEqual('Jackson', john.last_name)
 
@@ -146,7 +159,7 @@ class TestModelAction(TestCase):
             'address': 'Bottom of the hill',
             'owner=>first_name': 'Jack',
             'owner=>last_name': 'Jones'}
-        sut = ModelAction(TestHouse, 'address', fields)
+        sut = ModelAction(TestHouse, ['address'], fields)
         sut.update_from_fields(house)
         self.assertEqual(jill, house.owner)
         self.assertNotEqual(jack, house.owner)
@@ -161,7 +174,7 @@ class TestModelAction(TestCase):
             'address': 'Bottom of the hill',
             'owner=>first_name': 'Jack',
             'owner=>last_name': 'Jones'}
-        sut = ModelAction(TestHouse, 'address', fields)
+        sut = ModelAction(TestHouse, ['address'], fields)
         sut.update_from_fields(house, True)
         self.assertEqual(jack, house.owner)
 
@@ -174,16 +187,16 @@ class TestActionFactory(TestCase):
     @patch('nsync.actions.ModelAction')
     def test_it_creates_a_base_model_action_if_no_action_flags_are_included(
             self, ModelAction):
-        result = self.sut.build(SyncActions(), 'field1', None, {'field1': ''})
-        ModelAction.assert_called_with(self.model, 'field1', {'field1': ''})
+        result = self.sut.build(SyncActions(), ['field'], None, {'field': ''})
+        ModelAction.assert_called_with(self.model, ['field'], {'field': ''})
         self.assertIn(ModelAction.return_value, result)
 
     @patch('nsync.actions.CreateModelAction')
     def test_it_calls_create_action_with_correct_parameters(self,
                                                             TargetActionClass):
-        result = self.sut.build(SyncActions(create=True), 'field', ANY,
+        result = self.sut.build(SyncActions(create=True), ['field'], ANY,
                                 {'field': ''})
-        TargetActionClass.assert_called_with(self.model, 'field',
+        TargetActionClass.assert_called_with(self.model, ['field'],
                                              {'field': ''})
         self.assertIn(TargetActionClass.return_value, result)
 
@@ -192,17 +205,17 @@ class TestActionFactory(TestCase):
                                                             TargetActionClass):
         for actions in [SyncActions(update=True, force=False),
                         SyncActions(update=True, force=True)]:
-            result = self.sut.build(actions, 'field', ANY, {'field': ''})
-            TargetActionClass.assert_called_with(self.model, 'field',
+            result = self.sut.build(actions, ['field'], ANY, {'field': ''})
+            TargetActionClass.assert_called_with(self.model, ['field'],
                                                  {'field': ''}, actions.force)
             self.assertIn(TargetActionClass.return_value, result)
 
     @patch('nsync.actions.DeleteModelAction')
     def test_it_calls_delete_action_with_correct_parameters(self,
                                                             TargetActionClass):
-        result = self.sut.build(SyncActions(delete=True, force=True), 'field',
+        result = self.sut.build(SyncActions(delete=True, force=True), ['field'],
                                 ANY, {'field': ''})
-        TargetActionClass.assert_called_with(self.model, 'field',
+        TargetActionClass.assert_called_with(self.model, ['field'],
                                              {'field': ''})
         self.assertIn(TargetActionClass.return_value, result)
 
@@ -213,13 +226,13 @@ class TestActionFactory(TestCase):
         then the usual 'DeleteIfOnlyReferenceModelAction' will not actually
         do anything anyway, so test that no actions are built.
         """
-        result = self.sut.build(SyncActions(delete=True), 'field', ANY,
+        result = self.sut.build(SyncActions(delete=True), ['field'], ANY,
                                 {'field': ''})
         self.assertEqual([], result)
 
     def test_it_creates_two_actions_if_create_and_update_flags_are_included(
             self):
-        result = self.sut.build(SyncActions(create=True, update=True), 'field',
+        result = self.sut.build(SyncActions(create=True, update=True), ['field'],
                                 ANY, {'field': ''})
         self.assertEqual(2, len(result))
 
@@ -244,11 +257,11 @@ class TestActionFactory(TestCase):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
         sut = ActionFactory(model_mock, external_system_mock)
-        result = sut.build(SyncActions(create=True), 'field', 'external_key',
+        result = sut.build(SyncActions(create=True), ['field'], 'external_key',
                            {'field': 'value'})
         builtAction.assert_called_with(
             external_system_mock, model_mock,
-            'external_key', 'field', {'field': 'value'})
+            'external_key', ['field'], {'field': 'value'})
         self.assertIn(builtAction.return_value, result)
 
     @patch('nsync.actions.UpdateModelWithReferenceAction')
@@ -257,11 +270,11 @@ class TestActionFactory(TestCase):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
         sut = ActionFactory(model_mock, external_system_mock)
-        result = sut.build(SyncActions(update=True), 'field', 'external_key',
+        result = sut.build(SyncActions(update=True), ['field'], 'external_key',
                            {'field': 'value'})
         builtAction.assert_called_with(
             external_system_mock, model_mock,
-            'external_key', 'field', {'field': 'value'}, False)
+            'external_key', ['field'], {'field': 'value'}, False)
         self.assertIn(builtAction.return_value, result)
 
     @patch('nsync.actions.DeleteExternalReferenceAction')
@@ -270,7 +283,7 @@ class TestActionFactory(TestCase):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
         sut = ActionFactory(model_mock, external_system_mock)
-        result = sut.build(SyncActions(delete=True), 'field', 'external_key',
+        result = sut.build(SyncActions(delete=True), ['field'], 'external_key',
                            {'field': 'value'})
         DeleteExternalReferenceAction.assert_called_with(
             external_system_mock, 'external_key')
@@ -282,9 +295,9 @@ class TestActionFactory(TestCase):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
         sut = ActionFactory(model_mock, external_system_mock)
-        result = sut.build(SyncActions(delete=True, force=True), 'field',
+        result = sut.build(SyncActions(delete=True, force=True), ['field'],
                            'external_key', {'field': 'value'})
-        DeleteModelAction.assert_called_with(model_mock, 'field',
+        DeleteModelAction.assert_called_with(model_mock, ['field'],
                                              {'field': 'value'})
         self.assertIn(DeleteModelAction.return_value, result)
 
@@ -295,9 +308,9 @@ class TestActionFactory(TestCase):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
         sut = ActionFactory(model_mock, external_system_mock)
-        result = sut.build(SyncActions(delete=True), 'field', 'external_key',
+        result = sut.build(SyncActions(delete=True), ['field'], 'external_key',
                            {'field': 'value'})
-        DeleteModelAction.assert_called_with(model_mock, 'field',
+        DeleteModelAction.assert_called_with(model_mock, ['field'],
                                              {'field': 'value'})
         DeleteIfOnlyReferenceModelAction.assert_called_with(
             external_system_mock,
@@ -308,27 +321,27 @@ class TestActionFactory(TestCase):
 
 class TestCreateModelAction(TestCase):
     def test_it_creates_an_object(self):
-        sut = CreateModelAction(TestPerson, 'first_name',
+        sut = CreateModelAction(TestPerson, ['first_name'],
                                 {'first_name': 'John', 'last_name': 'Smith'})
         sut.execute()
         self.assertEqual(1, TestPerson.objects.count())
 
     def test_it_returns_the_created_object(self):
-        sut = CreateModelAction(TestPerson, 'first_name',
+        sut = CreateModelAction(TestPerson, ['first_name'],
                                 {'first_name': 'John', 'last_name': 'Smith'})
         result = sut.execute()
         self.assertEqual(TestPerson.objects.first(), result)
 
     def test_it_does_not_create_if_matching_object_exists(self):
         TestPerson.objects.create(first_name='John', last_name='Smith')
-        sut = CreateModelAction(TestPerson, 'first_name',
+        sut = CreateModelAction(TestPerson, ['first_name'],
                                 {'first_name': 'John', 'last_name': 'Smith'})
         sut.execute()
         self.assertEqual(1, TestPerson.objects.count())
 
     def test_it_does_not_modify_existing_object_if_object_already_exists(self):
         TestPerson.objects.create(first_name='John', last_name='Jackson')
-        sut = CreateModelAction(TestPerson, 'first_name',
+        sut = CreateModelAction(TestPerson, ['first_name'],
                                 {'first_name': 'John', 'last_name': 'Smith'})
         sut.execute()
         self.assertEqual(1, TestPerson.objects.count())
@@ -336,7 +349,7 @@ class TestCreateModelAction(TestCase):
 
     def test_it_returns_the_object_even_if_it_did_not_create_it(self):
         john = TestPerson.objects.create(first_name='John', last_name='Smith')
-        sut = CreateModelAction(TestPerson, 'first_name',
+        sut = CreateModelAction(TestPerson, ['first_name'],
                                 {'first_name': 'John', 'last_name': 'Smith'})
         result = sut.execute()
         self.assertEqual(john, result)
@@ -345,7 +358,7 @@ class TestCreateModelAction(TestCase):
             self):
         sut = CreateModelAction(
             TestPerson,
-            'first_name',
+            ['first_name'],
             {'first_name': 'John', 'last_name': 'Smith', 'age': 30,
              'hair_colour': 'None, he bald!'})
         result = sut.execute()
@@ -388,7 +401,7 @@ class TestCreateModelWithReferenceAction(TestCase):
     def test_it_creates_the_model_object(self):
         sut = CreateModelWithReferenceAction(
             self.external_system,
-            TestPerson, 'PersonJohn', 'first_name',
+            TestPerson, 'PersonJohn', ['first_name'],
             {'first_name': 'John', 'last_name': 'Smith'})
         sut.execute()
         self.assertEqual(1, TestPerson.objects.count())
@@ -396,7 +409,7 @@ class TestCreateModelWithReferenceAction(TestCase):
     def test_it_creates_the_reference(self):
         sut = CreateModelWithReferenceAction(
             self.external_system,
-            TestPerson, 'PersonJohn', 'first_name',
+            TestPerson, 'PersonJohn', ['first_name'],
             {'first_name': 'John', 'last_name': 'Smith'})
         sut.execute()
         self.assertEqual(1, ExternalKeyMapping.objects.count())
@@ -405,7 +418,7 @@ class TestCreateModelWithReferenceAction(TestCase):
         john = TestPerson.objects.create(first_name='John')
         sut = CreateModelWithReferenceAction(
             self.external_system,
-            TestPerson, 'PersonJohn', 'first_name',
+            TestPerson, 'PersonJohn', ['first_name'],
             {'first_name': 'John', 'last_name': 'Smith'})
         sut.execute()
         self.assertEqual(1, TestPerson.objects.count())
@@ -420,7 +433,7 @@ class TestCreateModelWithReferenceAction(TestCase):
             object_id=0)
         sut = CreateModelWithReferenceAction(
             self.external_system,
-            TestPerson, 'PersonJohn', 'first_name',
+            TestPerson, 'PersonJohn', ['first_name'],
             {'first_name': 'John', 'last_name': 'Smith'})
         sut.execute()
         self.assertEqual(1, ExternalKeyMapping.objects.count())
@@ -435,13 +448,13 @@ class TestCreateModelWithReferenceAction(TestCase):
         # create a reference & model objet
         CreateModelWithReferenceAction(
             self.external_system,
-            TestPerson, 'PersonJohn', 'first_name',
+            TestPerson, 'PersonJohn', ['first_name'],
             {'first_name': 'John', 'last_name': 'Smith'}).execute()
 
         # Attempt to create another object with different data but same external key
         CreateModelWithReferenceAction(
             self.external_system,
-            TestPerson, 'PersonJohn', 'first_name',
+            TestPerson, 'PersonJohn', ['first_name'],
             {'first_name': 'David', 'last_name': 'Jones'}).execute()
 
         linked_person = ExternalKeyMapping.objects.first().content_object
@@ -454,13 +467,13 @@ class TestCreateModelWithReferenceAction(TestCase):
 class TestUpdateModelAction(TestCase):
     def test_it_returns_the_object_even_if_nothing_updated(self):
         john = TestPerson.objects.create(first_name='John')
-        sut = UpdateModelAction(TestPerson, 'first_name',
+        sut = UpdateModelAction(TestPerson, ['first_name'],
                                 {'first_name': 'John'})
         result = sut.execute()
         self.assertEquals(john, result)
 
     def test_it_returns_nothing_if_object_does_not_exist(self):
-        sut = UpdateModelAction(TestPerson, 'first_name',
+        sut = UpdateModelAction(TestPerson, ['first_name'],
                                 {'first_name': 'John', 'last_name': 'Smith'})
         result = sut.execute()
         self.assertIsNone(result)
@@ -469,7 +482,7 @@ class TestUpdateModelAction(TestCase):
         john = TestPerson.objects.create(first_name='John')
         self.assertEqual('', john.last_name)
 
-        sut = UpdateModelAction(TestPerson, 'first_name',
+        sut = UpdateModelAction(TestPerson, ['first_name'],
                                 {'first_name': 'John', 'last_name': 'Smith'})
         sut.execute()
         john.refresh_from_db()
@@ -480,7 +493,7 @@ class TestUpdateModelAction(TestCase):
         john = TestPerson.objects.create(first_name='John')
         sut = UpdateModelAction(
             TestPerson,
-            'first_name',
+            ['first_name'],
             {'first_name': 'John',
              'totally_never_going_to_be_a_field': 'Smith'})
         result = sut.execute()
@@ -488,7 +501,7 @@ class TestUpdateModelAction(TestCase):
 
     def test_it_forces_updates_when_configured(self):
         john = TestPerson.objects.create(first_name='John', last_name='Smith')
-        sut = UpdateModelAction(TestPerson, 'first_name',
+        sut = UpdateModelAction(TestPerson, ['first_name'],
                                 {'first_name': 'John', 'last_name': 'Jackson'},
                                 True)
         sut.execute()
@@ -527,7 +540,7 @@ class TestUpdateModelWithReferenceAction(TestCase):
         self.external_system = ExternalSystem.objects.create(name='System')
         self.update_john = UpdateModelWithReferenceAction(
             self.external_system,
-            TestPerson, 'PersonJohn', 'first_name',
+            TestPerson, 'PersonJohn', ['first_name'],
             {'first_name': 'John', 'last_name': 'Smith'},
             True)
 
@@ -598,7 +611,7 @@ class TestUpdateModelWithReferenceAction(TestCase):
 class TestDeleteModelAction(TestCase):
     def test_no_objects_are_deleted_if_none_are_matched(self):
         john = TestPerson.objects.create(first_name='John')
-        DeleteModelAction(TestPerson, 'first_name',
+        DeleteModelAction(TestPerson, ['first_name'],
                           {'first_name': 'A non-matching name'}).execute()
         self.assertIn(john, TestPerson.objects.all())
 
@@ -608,7 +621,7 @@ class TestDeleteModelAction(TestCase):
         TestPerson.objects.create(first_name='Jill')
         self.assertEqual(3, TestPerson.objects.count())
 
-        DeleteModelAction(TestPerson, 'first_name',
+        DeleteModelAction(TestPerson, ['first_name'],
                           {'first_name': 'Jack'}).execute()
         self.assertFalse(TestPerson.objects.filter(first_name='Jack').exists())
 
@@ -720,19 +733,19 @@ class TestDeleteExternalReferenceAction(TestCase):
 
 class TestActionTypes(TestCase):
     def test_model_action_returns_empty_string_for_type(self):
-        self.assertEquals('', ModelAction(ANY, 'field', {'field': ''}).type)
+        self.assertEquals('', ModelAction(ANY, ['field'], {'field': ''}).type)
 
     def test_create_model_action_returns_correct_type_string(self):
         self.assertEquals('create',
-                          CreateModelAction(ANY, 'field', {'field': ''}).type)
+                          CreateModelAction(ANY, ['field'], {'field': ''}).type)
 
     def test_update_model_action_returns_correct_type_string(self):
         self.assertEquals('update',
-                          UpdateModelAction(ANY, 'field', {'field': ''}).type)
+                          UpdateModelAction(ANY, ['field'], {'field': ''}).type)
 
     def test_delete_model_action_returns_correct_type_string(self):
         self.assertEquals('delete',
-                          DeleteModelAction(ANY, 'field', {'field': ''}).type)
+                          DeleteModelAction(ANY, ['field'], {'field': ''}).type)
 
     def test_delete_if_only_reference_model_action_returns_wrapped_action_type(
             self):

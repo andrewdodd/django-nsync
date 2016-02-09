@@ -22,7 +22,7 @@ class TestIntegrations(TestCase):
         csv_file_obj = tempfile.NamedTemporaryFile(
             mode='w', prefix='TestSystem_tests_TestHouse_', suffix='.csv')
         csv_file_obj.writelines([
-            'external_key,action_flags,match_field_name,address,country\n',
+            'external_key,action_flags,match_field_names,address,country\n',
             'ExternalId1,c,address,House1,Australia\n',  # Will create the house
         ])
         csv_file_obj.seek(0)
@@ -42,7 +42,7 @@ class TestIntegrations(TestCase):
         csv_file_obj = tempfile.NamedTemporaryFile(
             mode='w', prefix='TestSystem_tests_TestHouse_', suffix='.csv')
         csv_file_obj.writelines([
-            'external_key,action_flags,match_field_name,address,country\n',
+            'external_key,action_flags,match_field_names,address,country\n',
             'ExternalId1,u*,address,A new address,A different country\n',  # Will update the house
         ])
         csv_file_obj.seek(0)
@@ -59,3 +59,31 @@ class TestIntegrations(TestCase):
         self.assertEqual(house, mapping.content_object) 
         self.assertEqual(house.address, 'A new address')
         self.assertEqual(house.country, 'A different country')
+
+    def test_multiple_match_fields_select_correct_object(self):
+        house1 = TestHouse.objects.create(address='BigHouse',   country='BigCountry')
+        house2 = TestHouse.objects.create(address='SmallHouse', country='BigCountry')
+        house3 = TestHouse.objects.create(address='BigHouse',   country='SmallCountry')
+        house4 = TestHouse.objects.create(address='SmallHouse', country='SmallCountry')
+
+        csv_file_obj = tempfile.NamedTemporaryFile(mode='w')
+        csv_file_obj.writelines([
+            'action_flags,match_field_names,address,country,floors\n',
+            'cu*,address country,BigHouse,BigCountry,1\n',
+            'cu*,address country,SmallHouse,BigCountry,2\n',
+            'cu*,address country,BigHouse,SmallCountry,3\n',
+            'cu*,address country,SmallHouse,SmallCountry,4\n',
+        ])
+        csv_file_obj.seek(0)
+
+        call_command('syncfile', 'TestSystem', 'tests', 'TestHouse',
+                     csv_file_obj.name)
+
+        for object in [house1, house2, house3, house4]:
+            object.refresh_from_db()
+
+        self.assertEqual(1, house1.floors)
+        self.assertEqual(2, house2.floors)
+        self.assertEqual(3, house3.floors)
+        self.assertEqual(4, house4.floors)
+

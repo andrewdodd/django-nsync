@@ -37,7 +37,7 @@ Example - Basic
 Using this file:
 
 .. csv-table:: persons.csv
-    :header: "action_flags", "match_field_name", "first_name", "last_name", "employee_id"
+    :header: "action_flags", "match_field_names", "first_name", "last_name", "employee_id"
 
     "cu","employee_id","Andrew","Dodd","EMP1111"
     "d*","employee_id","Some","Other-Guy","EMP2222"
@@ -62,7 +62,7 @@ Example - Basic with External Ids
 Using this file:
 
 .. csv-table:: persons.csv
-    :header: "external_key", "action_flags", "match_field_name", "first_name", "last_name", "employee_id"
+    :header: "external_key", "action_flags", "match_field_names", "first_name", "last_name", "employee_id"
 
     12212281,"cu","employee_id","Andrew","Dodd","EMP1111"
     43719289,"d*","employee_id","Some","Other-Guy","EMP2222"
@@ -79,6 +79,29 @@ Would:
  - Create or update ``ExternalKeyMapping`` objects for each of the other three ``myapp.Person`` objects, which contain the ``external_key`` value.
 
 
+Example - Basic with multiple match fields
+------------------------------------------
+
+Sometimes you might not have a 'unique' field to find your objects with (like 'Employee Id'). In this instance, you can specify multiple fields for finding your object.
+
+For example, using this file:
+
+.. csv-table:: persons.csv
+    :header: "action_flags", "match_field_names", "first_name", "last_name", "age"
+
+    "cu*","first_name last_name","Michael","Martin","30"
+    "cu*","first_name last_name","Martin","Martin","40"
+    "cu*","first_name last_name","Michael","Michael","50"
+    "cu*","first_name last_name","Martin","Michael","60"
+
+And running this command::
+
+    > python manage.py syncfile TestSystem myapp Person persons.csv
+
+Would:
+ - Create and/or update four persons of various "Michael" and "Martin" name combinations
+ - Ensure they are updated/created with the correct age!
+
 Example - Two or more systems
 -----------------------------
 This is probably the main purpose of this library: the ability to
@@ -91,7 +114,7 @@ information.
 As-built data:
 
 .. csv-table:: AsBuiltDB_myapp_House.csv
-    :header: "external_key", "action_flags", "match_field_name", "address", "country", "floors"
+    :header: "external_key", "action_flags", "match_field_names", "address", "country", "floors"
 
     111,"cu","address","221B Baker Street","England",1
     222,"cu","address","Wayne Manor","Gotham City",2
@@ -99,7 +122,7 @@ As-built data:
 Renovated data:
 
 .. csv-table:: RenovationsDB_myapp_House.csv
-    :header: "external_key", "action_flags", "match_field_name", "address", "floors"
+    :header: "external_key", "action_flags", "match_field_names", "address", "floors"
 
     ABC123,"u*","address","221B Baker Street",2
     ABC456,"u*","address","Wayne Manor",4
@@ -137,7 +160,7 @@ Example - Referential fields
 You can also manage referential fields with Nsync. For example, if you had the following people:
 
 .. csv-table:: Examples_myapp_Person.csv
-    :header: "external_key", "action_flags", "match_field_name", "first_name", "last_name", "employee_id"
+    :header: "external_key", "action_flags", "match_field_names", "first_name", "last_name", "employee_id"
 
     1111,"cu*","employee_id","Homer","Simpson","EMP1"
     2222,"cu*","employee_id","Bruce","Wayne","EMP2"
@@ -146,7 +169,7 @@ You can also manage referential fields with Nsync. For example, if you had the f
 You could set their houses with a file like this:
 
 .. csv-table:: Examples_myapp_House.csv
-    :header: "external_key", "action_flags", "match_field_name", "address", "owner=>first_name"
+    :header: "external_key", "action_flags", "match_field_names", "address", "owner=>first_name"
 
     ABC456,"cu*","address","Wayne Manor","Bruce"
     FOX123,"cu*","address","742 Evergreen Terrace","Homer"
@@ -158,7 +181,7 @@ Example - Referential field gotchas
 The referential field update will ONLY be performed if the referred-to-fields target a single object. For example, if you had the following list of people:
 
 .. csv-table:: Examples_myapp_Person.csv
-    :header: "external_key", "action_flags", "match_field_name", "first_name", "last_name", "employee_id"
+    :header: "external_key", "action_flags", "match_field_names", "first_name", "last_name", "employee_id"
 
     1111,"cu*","employee_id","Homer","Simpson","EMP1"
     2222,"cu*","employee_id","Homer","The Greek","EMP2"
@@ -172,7 +195,7 @@ The ``owner=>first_name`` from the previous example is insufficient to pick out 
 Nsync allows you to specify multiple fields to use in order to 'filter' the correct object to create the link with. In this instance, this file would perform correctly:
 
 .. csv-table:: Examples_myapp_House.csv
-    :header: "external_key", "action_flags", "match_field_name", "address", "owner=>first_name", "owner=>last_name"
+    :header: "external_key", "action_flags", "match_field_names", "address", "owner=>first_name", "owner=>last_name"
 
     ABC456,"cu*","address","Wayne Manor","Bruce","Wayne"
     FOX123,"cu*","address","742 Evergreen Terrace","Homer","Simpson"
@@ -204,7 +227,7 @@ If your Person model has a photo ImageField, then you could add a custom handler
 And then supply the photos with a file sync file like:
 
 .. csv-table:: persons.csv
-    :header: "action_flags", "match_field_name", "first_name", "last_name", "employee_id", "photo_filename"
+    :header: "action_flags", "match_field_names", "first_name", "last_name", "employee_id", "photo_filename"
 
     "cu*","employee_id","Andrew","Dodd","EMP1111","/tmp/photos/ugly_headshot.jpg"
 

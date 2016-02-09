@@ -96,25 +96,27 @@ class TestCsvActionFactory(TestCase):
 
         self.dict_with_defaults = {
             'action_flags': CsvSyncActionsEncoder().encode(SyncActions()),
-            'match_field_name': 'field1',
+            'match_field_names': 'field1',
             'field1': ''}
 
     @patch('nsync.management.commands.utils.CsvSyncActionsDecoder')
     def test_from_dict_maps_to_build_correctly(self, ActionDecoder):
         action_flags_mock = MagicMock()
-        match_field_name_mock = MagicMock()
+        match_field_names_mock = MagicMock()
         external_key_mock = MagicMock()
 
         with patch.object(self.sut, 'build') as build_method:
             result = self.sut.from_dict({
                 'action_flags': action_flags_mock,
-                'match_field_name': match_field_name_mock,
+                'match_field_names': match_field_names_mock,
                 'external_key': external_key_mock,
                 'other_key': 'value'})
             ActionDecoder.decode.assert_called_with(action_flags_mock)
+            match_field_names_mock.split.assert_called_with(
+                CsvActionFactory.match_field_names_delimiter)
             build_method.assert_called_with(
                 ActionDecoder.decode.return_value,
-                match_field_name_mock,
+                match_field_names_mock.split.return_value,
                 external_key_mock,
                 {'other_key': 'value'})
             self.assertEqual(build_method.return_value, result)

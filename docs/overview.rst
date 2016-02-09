@@ -165,9 +165,10 @@ The current choices for how this 'selection' behaves are:
  - Always acts on a single object
  - Found by the "``match_field``" value
    
-   - Found by looking for an object with the value for the '``match_field_name``' in the 'values'
-     provided (huh? right, it'll make sense in the examples)
-   - NB: No multi-value lookup at the moment, hence you need a 'unique' field to find your objects
+   - Found by looking for an object with matching values for the '``match_field_names``' in the 'values'
+     provided (huh? feeling lost?, it'll make sense in the examples)
+   - This could either be a 'unique' field with which to find your object, OR it could be a list of
+     fields to use to find your object.
 
 - Actions that target mulitple obects "could" be possible, but they are hard and probably not worth
   the trouble

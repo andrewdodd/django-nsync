@@ -31,33 +31,35 @@ class ModelAction:
     """
     REFERRED_TO_DELIMITER = '=>'
 
-    def __init__(self, model, match_field_name, fields={}):
+    def __init__(self, model, match_field_names, fields={}):
         """
         Create a base action.
 
         :param model:
-        :param match_field_name:
+        :param match_field_names:
         :param fields:
         :return:
         """
         if model is None:
             raise ValueError('model cannot be None')
-        if not match_field_name:
-            raise ValueError('match_field_name({}) must be not "empty"'.format(
-                match_field_name))
-        if match_field_name not in fields:
-            raise ValueError('match_field_name({}) must be in fields'.format(
-                match_field_name))
+        if not match_field_names:
+            raise ValueError('match_field_names({}) must be not "empty"'.format(
+                match_field_names))
+
+        for match_field_name in match_field_names:
+            if match_field_name not in fields:
+                raise ValueError('match_field_name({}) must be in fields'.format(
+                    match_field_name))
 
         self.model = model
-        self.match_field_name = match_field_name
+        self.match_field_names = match_field_names
         self.fields = fields
 
     def __str__(self):
-        return 'Action {} - Model:{} - MatchField:{} - Fields:{}'.format(
+        return 'Action {} - Model:{} - MatchFields:{} - Fields:{}'.format(
             self.__class__,
             self.model,
-            self.match_field_name,
+            self.match_field_names,
             self.fields)
 
     @property
@@ -66,7 +68,7 @@ class ModelAction:
 
     def find_objects(self):
         """Finds all objects that match the provided matching information"""
-        filter_by = {self.match_field_name: self.fields[self.match_field_name]}
+        filter_by = {field: value for (field, value) in self.fields.items() if field in self.match_field_names}
         return self.model.objects.filter(**filter_by)
 
     def execute(self):
@@ -156,25 +158,21 @@ class CreateModelWithReferenceAction(CreateModelAction):
     update an external reference to the object.
     """
 
-    def __init__(self, external_system, model, external_key, match_field_name, fields={}):
+    def __init__(self, external_system, model, external_key, match_field_names, fields={}):
         """
 
         :param external_system (model object): The external system to create or
             update the reference for.
-        :param model (class): The model class the reference should be created
-            or updated for.
         :param external_key (str): The reference value from the external
             system (i.e. the 'id' that the external system uses to refer to the
             model object).
-        :param match_field_name (str): The name of a model attribute/field
-            to use to find the object to update. This must be a key in the
-            provided fields.
-        :param fields(dict): The set of fields to update, with the values to
-            update them to.
+        :param model (class): See definition on super class
+        :param match_field_names (list): See definition on super class
+        :param fields(dict): See definition on super class
         :return: The model object provided by the action
         """
         super(CreateModelWithReferenceAction, self).__init__(
-            model, match_field_name, fields)
+            model, match_field_names, fields)
         self.external_system = external_system
         self.external_key = external_key
 
@@ -198,6 +196,7 @@ class CreateModelWithReferenceAction(CreateModelAction):
             mapping.content_object = model_obj
             mapping.object_id = model_obj.id
             mapping.save()
+        return model_obj
 
 
 class UpdateModelAction(ModelAction):
@@ -206,22 +205,22 @@ class UpdateModelAction(ModelAction):
     object.
     """
 
-    def __init__(self, model, match_field_name, fields={}, force_update=False):
+    def __init__(self, model, match_field_names, fields={}, force_update=False):
         """
         Create an Update action to be executed in the future.
 
         :param model (class): The model to update against
-        :param match_field_name (str): The name of a model attribute/field
-        to use to find the object to update. This must be a key in the
-        provided fields.
+        :param match_field_names (list): A list of names of model attributes/fields
+            to use to find the object to update. They must be a key in the
+            provided fields.
         :param fields(dict): The set of fields to update, with the values to
-        update them to.
+            update them to.
         :param force_update(bool): (Optional) Whether the update should be
-        forced or only affect 'empty' fields. Default:False
+            forced or only affect 'empty' fields. Default:False
         :return: The updated object (if a matching object is found) or None.
         """
         super(UpdateModelAction, self).__init__(
-            model, match_field_name, fields)
+            model, match_field_names, fields)
         self.force_update = force_update
 
     @property
@@ -245,26 +244,23 @@ class UpdateModelWithReferenceAction(UpdateModelAction):
     update an external reference to the object.
     """
 
-    def __init__(self, external_system, model, external_key, match_field_name, 
+    def __init__(self, external_system, model, external_key, match_field_names, 
             fields={}, force_update=False):
         """
 
         :param external_system (model object): The external system to create or
             update the reference for.
-        :param model (class): The model class the reference should be created
-            or updated for.
         :param external_key (str): The reference value from the external
             system (i.e. the 'id' that the external system uses to refer to the
             model object).
-        :param match_field_name (str): The name of a model attribute/field
-            to use to find the object to update. This must be a key in the
-            provided fields.
-        :param fields(dict): The set of fields to update, with the values to
-            update them to.
-        :return: The model object provided by the action
+
+        :param model (class): See definition on super class
+        :param match_field_names (list): See definition on super class
+        :param fields(dict): See definition on super class
+        :return: The updated object (if an object is found) or None.
         """
         super(UpdateModelWithReferenceAction, self).__init__(
-            model, match_field_name, fields, force_update)
+            model, match_field_names, fields, force_update)
         self.external_system = external_system
         self.external_key = external_key
 
@@ -295,7 +291,7 @@ class UpdateModelWithReferenceAction(UpdateModelAction):
             model_obj = matched_object
         else:
             # No object to update
-            return
+            return None
 
         if model_obj:
             self.update_from_fields(model_obj, self.force_update)
@@ -307,6 +303,8 @@ class UpdateModelWithReferenceAction(UpdateModelAction):
             mapping.content_object = model_obj
             mapping.object_id = model_obj.id
             mapping.save()
+
+        return model_obj
 
 
 class DeleteIfOnlyReferenceModelAction(ModelAction):
@@ -466,7 +464,7 @@ class ActionFactory:
 
         return external_key.strip() is not ''
 
-    def build(self, sync_actions, match_field_name, external_system_key,
+    def build(self, sync_actions, match_field_names, external_system_key,
               fields):
         """
         Builds the list of actions to satisfy the provided information.
@@ -475,7 +473,7 @@ class ActionFactory:
         external system references correctly up to date.
 
         :param sync_actions:
-        :param match_field_name:
+        :param match_field_names:
         :param external_system_key:
         :param fields:
         :return:
@@ -483,10 +481,10 @@ class ActionFactory:
         actions = []
 
         if sync_actions.is_impotent():
-            actions.append(ModelAction(self.model, match_field_name, fields))
+            actions.append(ModelAction(self.model, match_field_names, fields))
 
         if sync_actions.delete:
-            action = DeleteModelAction(self.model, match_field_name, fields)
+            action = DeleteModelAction(self.model, match_field_names, fields)
             if self.is_externally_mappable(external_system_key):
                 if not sync_actions.force:
                     action = DeleteIfOnlyReferenceModelAction(
@@ -502,21 +500,21 @@ class ActionFactory:
                 action = CreateModelWithReferenceAction(self.external_system,
                                                       self.model,
                                                       external_system_key,
-                                                      match_field_name,
+                                                      match_field_names,
                                                       fields)
             else:
-                action = CreateModelAction(self.model, match_field_name, fields)
+                action = CreateModelAction(self.model, match_field_names, fields)
             actions.append(action)
         if sync_actions.update:
             if self.is_externally_mappable(external_system_key):
                 action = UpdateModelWithReferenceAction(self.external_system,
                                                       self.model,
                                                       external_system_key,
-                                                      match_field_name,
+                                                      match_field_names,
                                                       fields,
                                                       sync_actions.force)
             else:
-                action = UpdateModelAction(self.model, match_field_name,
+                action = UpdateModelAction(self.model, match_field_names,
                                        fields, sync_actions.force)
 
             actions.append(action)
