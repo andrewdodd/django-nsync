@@ -10,7 +10,6 @@ from nsync.actions import (
     CreateModelWithReferenceAction,
     UpdateModelWithReferenceAction,
     DeleteExternalReferenceAction,
-    AlignExternalReferenceAction,
     DeleteIfOnlyReferenceModelAction,
     SyncActions,
     ActionFactory,
@@ -239,35 +238,31 @@ class TestActionFactory(TestCase):
         self.assertTrue(
             ActionFactory(ANY, ANY).is_externally_mappable('a mappable key'))
 
-    @patch('nsync.actions.AlignExternalReferenceAction')
-    @patch('nsync.actions.CreateModelAction')
-    def test_it_wraps_create_action_if_externally_mappable(
-            self, CreateModelAction, AlignExternalReferenceAction):
+    @patch('nsync.actions.CreateModelWithReferenceAction')
+    def test_it_builds_a_create_with_external_action_if_externally_mappable(
+            self, builtAction):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
         sut = ActionFactory(model_mock, external_system_mock)
         result = sut.build(SyncActions(create=True), 'field', 'external_key',
                            {'field': 'value'})
-        AlignExternalReferenceAction.assert_called_with(
+        builtAction.assert_called_with(
             external_system_mock, model_mock,
-            'external_key', CreateModelAction.return_value)
-        self.assertIn(AlignExternalReferenceAction.return_value, result)
-        self.assertNotIn(CreateModelAction.return_value, result)
+            'external_key', 'field', {'field': 'value'})
+        self.assertIn(builtAction.return_value, result)
 
-    @patch('nsync.actions.AlignExternalReferenceAction')
-    @patch('nsync.actions.UpdateModelAction')
-    def test_it_wraps_update_action_if_externally_mappable(
-            self, UpdateModelAction, AlignExternalReferenceAction):
+    @patch('nsync.actions.UpdateModelWithReferenceAction')
+    def test_it_builds_an_update_with_external_action_if_externally_mappable(
+            self, builtAction):
         external_system_mock = MagicMock()
         model_mock = MagicMock()
         sut = ActionFactory(model_mock, external_system_mock)
         result = sut.build(SyncActions(update=True), 'field', 'external_key',
                            {'field': 'value'})
-        AlignExternalReferenceAction.assert_called_with(
+        builtAction.assert_called_with(
             external_system_mock, model_mock,
-            'external_key', UpdateModelAction.return_value)
-        self.assertIn(AlignExternalReferenceAction.return_value, result)
-        self.assertNotIn(UpdateModelAction.return_value, result)
+            'external_key', 'field', {'field': 'value'}, False)
+        self.assertIn(builtAction.return_value, result)
 
     @patch('nsync.actions.DeleteExternalReferenceAction')
     def test_it_creates_delete_external_reference_if_externally_mappable(
@@ -454,7 +449,6 @@ class TestCreateModelWithReferenceAction(TestCase):
         self.assertEqual('Smith', linked_person.last_name)
         self.assertEqual(1, TestPerson.objects.count())
         self.assertEqual(1, ExternalKeyMapping.objects.count())
-
 
 
 class TestUpdateModelAction(TestCase):
@@ -724,72 +718,6 @@ class TestDeleteExternalReferenceAction(TestCase):
             external_key='Key2').exists())
 
 
-class TestAlignExternalReferenceAction(TestCase):
-    def setUp(self):
-        self.external_system = ExternalSystem.objects.create(name='System')
-        self.john = TestPerson.objects.create(first_name='John')
-
-    def test_it_creates_a_new_key_mapping_if_one_not_found(
-            self):
-        mock_action = MagicMock()
-        mock_action.execute.return_value = self.john
-
-        self.assertEqual(0, ExternalKeyMapping.objects.count())
-        sut = AlignExternalReferenceAction(
-            self.external_system,
-            TestPerson, 'PersonJohn', mock_action)
-        sut.execute()
-
-        self.assertEqual(1, ExternalKeyMapping.objects.count())
-        mapping = ExternalKeyMapping.objects.first()
-        self.assertEqual('PersonJohn', mapping.external_key)
-        self.assertEqual(self.john, mapping.content_object)
-
-    def test_it_updates_existing_key_mapping_on_success_of_inner_action(self):
-        jill = TestPerson.objects.create(first_name='Jill')
-        person_mapping = ExternalKeyMapping.objects.create(
-            external_system=self.external_system,
-            external_key='Person123',
-            content_type=ContentType.objects.get_for_model(TestPerson),
-            content_object=jill,
-            object_id=jill.id)
-        self.assertEqual(1, ExternalKeyMapping.objects.count())
-        self.assertEqual(jill, person_mapping.content_object)
-
-        mock_action = MagicMock()
-        mock_action.execute.return_value = self.john
-        sut = AlignExternalReferenceAction(self.external_system,
-                                           TestPerson,
-                                           'Person123',
-                                           mock_action)
-        sut.execute()
-
-        self.assertEqual(1, ExternalKeyMapping.objects.count())
-        mapping = ExternalKeyMapping.objects.first()
-        self.assertEqual(self.john, mapping.content_object)
-
-    def test_it_does_nothing_if_inner_action_fails(self):
-        mock_action = MagicMock()
-        mock_action.execute.return_value = None
-        sut = AlignExternalReferenceAction(self.external_system,
-                                           ANY,
-                                           ANY,
-                                           mock_action)
-        sut.execute()
-        mock_action.execute.assert_called_with()
-        self.assertEqual(0, ExternalKeyMapping.objects.count())
-
-    @patch('nsync.actions.ExternalKeyMapping')
-    def test_it_passes_the_result_of_the_action_back(self, ExternalKeyMapping):
-        mock_action = MagicMock()
-        sut = AlignExternalReferenceAction(self.external_system,
-                                           TestPerson,
-                                           ANY,
-                                           mock_action)
-        result = sut.execute()
-        self.assertEqual(mock_action.execute.return_value, result)
-
-
 class TestActionTypes(TestCase):
     def test_model_action_returns_empty_string_for_type(self):
         self.assertEquals('', ModelAction(ANY, 'field', {'field': ''}).type)
@@ -811,11 +739,6 @@ class TestActionTypes(TestCase):
         delete_action = MagicMock()
         sut = DeleteIfOnlyReferenceModelAction(ANY, ANY, delete_action)
         self.assertEqual(delete_action.type, sut.type)
-
-    def test_align_external_reference_action_returns_wrapped_action_type(self):
-        action = MagicMock()
-        sut = AlignExternalReferenceAction(ANY, ANY, ANY, action)
-        self.assertEqual(action.type, sut.type)
 
     def test_delete_external_reference_action_returns_correct_type_string(
             self):

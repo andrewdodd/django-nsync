@@ -360,66 +360,6 @@ class DeleteModelAction(ModelAction):
         self.find_objects().delete()
 
 
-class AlignExternalReferenceAction:
-    """
-    A model action to create or update an ExternalKeyMapping object for the
-    corresponding model object.
-
-    This creates or updates (if it already exists) an ExternalKeyMapping object
-    that is linked to the object returned by the action it is built with.
-    """
-
-    def __init__(self, external_system, model, external_key, action):
-        """
-        Create an alignment action that can be executed in the future.
-
-        :param external_system (model object): The external system to create or
-            update the reference for.
-        :param model (class): The model class the reference should be created
-            or updated for.
-        :param external_key (str): The reference value from the external
-            system (i.e. the 'id' that the external system uses to refer to the
-            model object).
-        :param action (ModelAction): The action that will be peformed and that
-            will provide the model object to create the reference to.
-        :return: The model object provided by the action
-        """
-        self.external_system = external_system
-        self.external_key = external_key
-        self.model = model
-        self.action = action
-
-    @property
-    def type(self):
-        return self.action.type
-
-    def execute(self):
-        """
-        Executes the provided action and then creates or updates an
-        ExternalKeyMapping to point to the result of the action (if the
-        action returned a model object)
-        :return:
-        """
-        model_obj = self.action.execute()
-
-        if model_obj:
-            try:
-                mapping = ExternalKeyMapping.objects.get(
-                    external_system=self.external_system,
-                    external_key=self.external_key)
-            except ExternalKeyMapping.DoesNotExist:
-                mapping = ExternalKeyMapping(
-                    external_system=self.external_system,
-                    external_key=self.external_key)
-            mapping.content_type = ContentType.objects.get_for_model(
-                self.model)
-            mapping.content_object = model_obj
-            mapping.object_id = model_obj.id
-            mapping.save()
-
-        return model_obj
-
-
 class DeleteExternalReferenceAction:
     """
     A model action to remove the ExternalKeyMapping object for a model object.
@@ -558,21 +498,26 @@ class ActionFactory:
                 actions.append(action)
 
         if sync_actions.create:
-            action = CreateModelAction(self.model, match_field_name, fields)
             if self.is_externally_mappable(external_system_key):
-                action = AlignExternalReferenceAction(self.external_system,
+                action = CreateModelWithReferenceAction(self.external_system,
                                                       self.model,
                                                       external_system_key,
-                                                      action)
+                                                      match_field_name,
+                                                      fields)
+            else:
+                action = CreateModelAction(self.model, match_field_name, fields)
             actions.append(action)
         if sync_actions.update:
-            action = UpdateModelAction(self.model, match_field_name,
-                                       fields, sync_actions.force)
             if self.is_externally_mappable(external_system_key):
-                action = AlignExternalReferenceAction(self.external_system,
+                action = UpdateModelWithReferenceAction(self.external_system,
                                                       self.model,
                                                       external_system_key,
-                                                      action)
+                                                      match_field_name,
+                                                      fields,
+                                                      sync_actions.force)
+            else:
+                action = UpdateModelAction(self.model, match_field_name,
+                                       fields, sync_actions.force)
 
             actions.append(action)
 
