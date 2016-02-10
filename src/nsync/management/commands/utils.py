@@ -9,12 +9,7 @@ from nsync.actions import ActionFactory, SyncActions
 class SupportedFileChecker:
     @staticmethod
     def is_valid(file):
-        if file is None:
-            return False
-
-        is_valid = csv.Sniffer().has_header(file.read(1024))
-        file.seek(0)
-        return is_valid
+        return file is not None
 
 
 class ModelFinder:
