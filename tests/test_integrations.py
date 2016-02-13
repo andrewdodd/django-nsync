@@ -22,7 +22,7 @@ class TestIntegrations(TestCase):
         csv_file_obj = tempfile.NamedTemporaryFile(
             mode='w', prefix='TestSystem_tests_TestHouse_', suffix='.csv')
         csv_file_obj.writelines([
-            'external_key,action_flags,match_field_names,address,country\n',
+            'external_key,action_flags,match_on,address,country\n',
             'ExternalId1,c,address,House1,Australia\n',  # Will create the house
         ])
         csv_file_obj.seek(0)
@@ -42,7 +42,7 @@ class TestIntegrations(TestCase):
         csv_file_obj = tempfile.NamedTemporaryFile(
             mode='w', prefix='TestSystem_tests_TestHouse_', suffix='.csv')
         csv_file_obj.writelines([
-            'external_key,action_flags,match_field_names,address,country\n',
+            'external_key,action_flags,match_on,address,country\n',
             'ExternalId1,u*,address,A new address,A different country\n',  # Will update the house
         ])
         csv_file_obj.seek(0)
@@ -68,7 +68,7 @@ class TestIntegrations(TestCase):
 
         csv_file_obj = tempfile.NamedTemporaryFile(mode='w')
         csv_file_obj.writelines([
-            'action_flags,match_field_names,address,country,floors\n',
+            'action_flags,match_on,address,country,floors\n',
             'cu*,address country,BigHouse,BigCountry,1\n',
             'cu*,address country,SmallHouse,BigCountry,2\n',
             'cu*,address country,BigHouse,SmallCountry,3\n',

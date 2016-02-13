@@ -33,7 +33,7 @@ Usage
 
 Create your CSV file(s) with the data you need to synchronise with::
 
-    first_name,last_name,employee_id,action_flags,match_field_name
+    first_name,last_name,employee_id,action_flags,match_on
     Andrew,Dodd,E1234,cu,employee_id
     Some,Other-Guy,E4321,d,employee_id
 

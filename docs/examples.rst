@@ -37,7 +37,7 @@ Example - Basic
 Using this file:
 
 .. csv-table:: persons.csv
-    :header: "action_flags", "match_field_names", "first_name", "last_name", "employee_id"
+    :header: "action_flags", "match_on", "first_name", "last_name", "employee_id"
 
     "cu","employee_id","Andrew","Dodd","EMP1111"
     "d*","employee_id","Some","Other-Guy","EMP2222"
@@ -62,7 +62,7 @@ Example - Basic with External Ids
 Using this file:
 
 .. csv-table:: persons.csv
-    :header: "external_key", "action_flags", "match_field_names", "first_name", "last_name", "employee_id"
+    :header: "external_key", "action_flags", "match_on", "first_name", "last_name", "employee_id"
 
     12212281,"cu","employee_id","Andrew","Dodd","EMP1111"
     43719289,"d*","employee_id","Some","Other-Guy","EMP2222"
@@ -82,12 +82,12 @@ Would:
 Example - Basic with multiple match fields
 ------------------------------------------
 
-Sometimes you might not have a 'unique' field to find your objects with (like 'Employee Id'). In this instance, you can specify multiple fields for finding your object.
+Sometimes you might not have a 'unique' field to find your objects with (like 'Employee Id'). In this instance, you can specify multiple fields for finding your object (separated with a space, ' ').
 
 For example, using this file:
 
 .. csv-table:: persons.csv
-    :header: "action_flags", "match_field_names", "first_name", "last_name", "age"
+    :header: "action_flags", "match_on", "first_name", "last_name", "age"
 
     "cu*","first_name last_name","Michael","Martin","30"
     "cu*","first_name last_name","Martin","Martin","40"
@@ -114,7 +114,7 @@ information.
 As-built data:
 
 .. csv-table:: AsBuiltDB_myapp_House.csv
-    :header: "external_key", "action_flags", "match_field_names", "address", "country", "floors"
+    :header: "external_key", "action_flags", "match_on", "address", "country", "floors"
 
     111,"cu","address","221B Baker Street","England",1
     222,"cu","address","Wayne Manor","Gotham City",2
@@ -122,7 +122,7 @@ As-built data:
 Renovated data:
 
 .. csv-table:: RenovationsDB_myapp_House.csv
-    :header: "external_key", "action_flags", "match_field_names", "address", "floors"
+    :header: "external_key", "action_flags", "match_on", "address", "floors"
 
     ABC123,"u*","address","221B Baker Street",2
     ABC456,"u*","address","Wayne Manor",4
@@ -160,7 +160,7 @@ Example - Referential fields
 You can also manage referential fields with Nsync. For example, if you had the following people:
 
 .. csv-table:: Examples_myapp_Person.csv
-    :header: "external_key", "action_flags", "match_field_names", "first_name", "last_name", "employee_id"
+    :header: "external_key", "action_flags", "match_on", "first_name", "last_name", "employee_id"
 
     1111,"cu*","employee_id","Homer","Simpson","EMP1"
     2222,"cu*","employee_id","Bruce","Wayne","EMP2"
@@ -169,7 +169,7 @@ You can also manage referential fields with Nsync. For example, if you had the f
 You could set their houses with a file like this:
 
 .. csv-table:: Examples_myapp_House.csv
-    :header: "external_key", "action_flags", "match_field_names", "address", "owner=>first_name"
+    :header: "external_key", "action_flags", "match_on", "address", "owner=>first_name"
 
     ABC456,"cu*","address","Wayne Manor","Bruce"
     FOX123,"cu*","address","742 Evergreen Terrace","Homer"
@@ -181,7 +181,7 @@ Example - Referential field gotchas
 The referential field update will ONLY be performed if the referred-to-fields target a single object. For example, if you had the following list of people:
 
 .. csv-table:: Examples_myapp_Person.csv
-    :header: "external_key", "action_flags", "match_field_names", "first_name", "last_name", "employee_id"
+    :header: "external_key", "action_flags", "match_on", "first_name", "last_name", "employee_id"
 
     1111,"cu*","employee_id","Homer","Simpson","EMP1"
     2222,"cu*","employee_id","Homer","The Greek","EMP2"
@@ -195,7 +195,7 @@ The ``owner=>first_name`` from the previous example is insufficient to pick out 
 Nsync allows you to specify multiple fields to use in order to 'filter' the correct object to create the link with. In this instance, this file would perform correctly:
 
 .. csv-table:: Examples_myapp_House.csv
-    :header: "external_key", "action_flags", "match_field_names", "address", "owner=>first_name", "owner=>last_name"
+    :header: "external_key", "action_flags", "match_on", "address", "owner=>first_name", "owner=>last_name"
 
     ABC456,"cu*","address","Wayne Manor","Bruce","Wayne"
     FOX123,"cu*","address","742 Evergreen Terrace","Homer","Simpson"
@@ -227,9 +227,60 @@ If your Person model has a photo ImageField, then you could add a custom handler
 And then supply the photos with a file sync file like:
 
 .. csv-table:: persons.csv
-    :header: "action_flags", "match_field_names", "first_name", "last_name", "employee_id", "photo_filename"
+    :header: "action_flags", "match_on", "first_name", "last_name", "employee_id", "photo_filename"
 
     "cu*","employee_id","Andrew","Dodd","EMP1111","/tmp/photos/ugly_headshot.jpg"
+
+
+Example - Update uses external key mapping over matched object
+--------------------------------------------------------------
+This is an example that is to do with the changes for `Issue 1`_
+
+If Nsync is 'updating' objects but their 'match fields' change, Nsync will still update the 'correct' object.
+
+A common occurrence of this is if the sync data is being produced from a database and an in-row update occurs which changes the match fields but leaves the 'external key' (i.e. an SQL 'UPDATE ... WHERE ...' statement).
+
+E.g. A person table might look like this:
+
+================== =============== ====
+ID (a DB sequence) Employee Number Name
+================== =============== ====
+10123              EMP001          Andrew Dodd
+================== =============== ====
+
+This could be used to produce an Nsync input CSV like this:
+
+============ ============ =============== =============== ====
+external_key action_flags match_on        employee_number name
+============ ============ =============== =============== ====
+10123        cu*          employee_number EMP001          Andrew Dodd
+============ ============ =============== =============== ====
+
+This would result in an "Andrew Dodd, EMP001" Person object being created and/or updated with an `ExternalKeyMapping` object holding the '10123' id and a link to Andrew.
+
+If Andrew became a contractor instead of an employee, perhaps the table could be updated to look like this:
+
+================== =============== ====
+ID (a DB sequence) Employee Number Name
+================== =============== ====
+10123              CONT999         Andrew Dodd
+================== =============== ====
+
+This would then produce an Nsync input CSV like this:
+
+============ ============ =============== =============== ====
+external_key action_flags match_on        employee_number name
+============ ============ =============== =============== ====
+10123        cu*          employee_number CONT999         Andrew Dodd
+============ ============ =============== =============== ====
+
+Nsync will use the `ExternalKeyMapping` object if it is available instead of relying on the 'match fields'. In this case, the
+resulting action will cause the Andrew Dodd object to change its 'employee_number'. This is instead of Nsync using the 
+'employee_number' for finding Andrew.
+
+NB: In this instance, Nsync will also delete any objects that have the 'new' match field but are not pointed to by the external key.
+
+.. _`Issue 1`: https://github.com/andrewdodd/django-nsync/issues/1
 
 
 Example - Delete tricks
@@ -250,3 +301,5 @@ The out-of-the-box sync policies are pretty straightforward and are probably wor
 Some examples of alternative policies might be:
  - Run deletes before creates and updates
  - Search and execute certain actions before all others
+
+

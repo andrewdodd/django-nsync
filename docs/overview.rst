@@ -163,12 +163,13 @@ Rules / Choices in design
 The current choices for how this 'selection' behaves are:
 
  - Always acts on a single object
- - Found by the "``match_field``" value
+ - Found by the "``match_on``" value
    
-   - Found by looking for an object with matching values for the '``match_field_names``' in the 'values'
-     provided (huh? feeling lost?, it'll make sense in the examples)
-   - This could either be a 'unique' field with which to find your object, OR it could be a list of
-     fields to use to find your object.
+   - Found by looking for an object that has the same 'values' as those provided for the model fields
+     specified in the '``match_on``' list of fields. (huh? feeling lost?, it'll make sense in the 
+     examples)
+   - The '``match_on``' column could be a 'unique' field with which to find your object, OR it could 
+     be a list of fields to use to find your object.
 
 - Actions that target mulitple obects "could" be possible, but they are hard and probably not worth
   the trouble
@@ -212,7 +213,7 @@ classes like this::
 You could load the assignment by synchronising with the following file for  ``Person`` model:
 
 .. csv-table:: persons.csv
-    :header: "action_flags", "match_field_name", "first_name", "last_name", "assigned_car=>rego_number"
+    :header: "action_flags", "match_on", "first_name", "last_name", "assigned_car=>rego_number"
 
     "cu","employee_id","Andrew","Dodd","BG29JL"
 
@@ -239,7 +240,7 @@ uniquely. For example, if you had classes like this instead (which is far more l
 You could load the assignment by synchronising with the following file for  ``Car`` model:
 
 .. csv-table:: cars.csv
-    :header: "action_flags", "match_field_name", "rego_number", "name", "assigned_to=>first_name", "assigned_to=>last_name"
+    :header: "action_flags", "match_on", "rego_number", "name", "assigned_to=>first_name", "assigned_to=>last_name"
 
     "cu","rego_number","BG29JL","Herman the Sherman","Andrew","Dodd"
 
@@ -251,6 +252,9 @@ the external systems. With the purpose being to supply a way for users of the li
 their own 'reverse' on which internal objects are being touched by which external systems. This is
 not particularly interesting, but it is perhaps worth checking out the ``ExternalSystem`` and
 ``ExternalKeyMapping`` classes.
+
+These classes are also used to decide which 'object' is update if the '``match_on``' fields are 
+changed (i.e. by an SQL UPDATE) but the 'external system key' remains the same.
 
 
 But how?
