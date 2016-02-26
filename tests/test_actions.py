@@ -42,6 +42,15 @@ class TestSyncActions(TestCase):
 
 
 class TestModelAction(TestCase):
+    def test_it_has_custom_string_format(self):
+        sut = ModelAction(TestPerson, ['match_field'], {'match_field':'value'})
+        result = str(sut)
+        self.assertIn("ModelAction", result)
+        self.assertIn("Model:TestPerson", result)
+        self.assertIn("MatchFields:['match_field']", result)
+        self.assertIn("Fields:{'match_field': 'value'}", result)
+
+
     def test_creating_without_a_model_raises_error(self):
         with self.assertRaises(ValueError):
             ModelAction(None, None)
@@ -49,8 +58,8 @@ class TestModelAction(TestCase):
     # TODO - Perhaps update this to look for the attribute on the class?
     def test_it_raises_an_error_if_matchfieldname_is_empty(self):
         """
-        Test that an error is raises if an empty match_field_names
-        value is provided, even if the fields dict has a matching key
+        Test that an error is raises if an empty match_on value is provided,
+        even if the fields dict has a matching key
         """
         with self.assertRaises(ValueError):
             ModelAction(ANY, [], {'': 'value'})
@@ -96,6 +105,16 @@ class TestModelAction(TestCase):
         self.assertEqual(person, house.owner)
 
     @patch('nsync.actions.logger')
+    def test_error_is_logged_if_field_not_on_object(
+            self, logger):
+        house = TestHouse.objects.create(address='Bottom of the hill')
+        fields = {'address': 'Bottom of the hill', 'buyer=>last_name': 'Jones'}
+
+        sut = ModelAction(TestHouse, ['address'], fields)
+        sut.update_from_fields(house)
+        self.assertTrue(logger.warn.called)
+
+    @patch('nsync.actions.logger')
     def test_related_fields_not_touched_if_referred_to_object_does_not_exist(
             self, logger):
         house = TestHouse.objects.create(address='Bottom of the hill')
@@ -104,7 +123,7 @@ class TestModelAction(TestCase):
         sut = ModelAction(TestHouse, ['address'], fields)
         sut.update_from_fields(house)
         self.assertEqual(None, house.owner)
-        logger.info.assert_called_with(ANY)
+        self.assertTrue(logger.warn.called)
 
     @patch('nsync.actions.logger')
     def test_related_fields_are_not_touched_if_referred_to_object_ambiguous(
@@ -116,7 +135,7 @@ class TestModelAction(TestCase):
         sut = ModelAction(TestHouse, ['address'], fields)
         sut.update_from_fields(house)
         self.assertEqual(None, house.owner)
-        logger.info.assert_called_with(ANY)
+        self.assertTrue(logger.warn.called)
 
     def test_related_fields_update_uses_all_available_filters(self):
         person = TestPerson.objects.create(first_name="John",

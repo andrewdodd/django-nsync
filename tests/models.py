@@ -30,3 +30,10 @@ class TestHouse(models.Model):
     country = models.CharField(max_length=100, blank=True)
     floors = models.IntegerField(blank=True, null=True)
     owner = models.ForeignKey(TestPerson, blank=True, null=True)
+
+    def __str__(self):
+        return '{}{}{}{}'.format(
+            self.address,
+            ', {}'.format(self.country) if self.country else '',
+            ' - {} floors'.format(self.floors) if self.floors else '',
+            ' - Family:{}'.format(self.owner.last_name) if self.owner else '')
