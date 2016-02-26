@@ -42,6 +42,26 @@ class TestSyncActions(TestCase):
 
 
 class TestModelAction(TestCase):
+    # http://stackoverflow.com/questions/899067/how-should-i-verify-a-log-message-when-testing-python-code-under-nose/20553331#20553331
+    @classmethod
+    def setUpClass(cls):
+        super(TestModelAction, cls).setUpClass()
+        # Assuming you follow Python's logging module's documentation's
+        # recommendation about naming your module's logs after the module's
+        # __name__,the following getLogger call should fetch the same logger
+        # you use in the foo module
+        import logging
+        import nsync
+        from tests.test_utils import MockLoggingHandler
+        logger = logging.getLogger(nsync.actions.__name__)
+        cls._logger_handler = MockLoggingHandler(level='DEBUG')
+        logger.addHandler(cls._logger_handler)
+        cls.logger_messages = cls._logger_handler.messages
+
+    def setUp(self):
+        super(TestModelAction, self).setUp()
+        self._logger_handler.reset() # So each test is independent
+
     def test_it_has_custom_string_format(self):
         sut = ModelAction(TestPerson, ['match_field'], {'match_field':'value'})
         result = str(sut)
@@ -104,30 +124,31 @@ class TestModelAction(TestCase):
         sut.update_from_fields(house)
         self.assertEqual(person, house.owner)
 
-    @patch('nsync.actions.logger')
-    def test_error_is_logged_if_field_not_on_object(
-            self, logger):
+    def test_error_is_logged_if_field_not_on_object(self):
         house = TestHouse.objects.create(address='Bottom of the hill')
         fields = {'address': 'Bottom of the hill', 'buyer=>last_name': 'Jones'}
 
         sut = ModelAction(TestHouse, ['address'], fields)
         sut.update_from_fields(house)
-        self.assertTrue(logger.warn.called)
 
-    @patch('nsync.actions.logger')
+        for msg in self.logger_messages['warning']:
+            self.assertIn('buyer', msg)
+
     def test_related_fields_not_touched_if_referred_to_object_does_not_exist(
-            self, logger):
+            self):
         house = TestHouse.objects.create(address='Bottom of the hill')
         fields = {'address': 'Bottom of the hill', 'owner=>last_name': 'Jones'}
 
         sut = ModelAction(TestHouse, ['address'], fields)
         sut.update_from_fields(house)
         self.assertEqual(None, house.owner)
-        self.assertTrue(logger.warn.called)
 
-    @patch('nsync.actions.logger')
+        for msg in self.logger_messages['warning']:
+            self.assertIn('Could not find TestPerson', msg)
+            self.assertIn(str({'last_name': 'Jones'}), msg)
+
     def test_related_fields_are_not_touched_if_referred_to_object_ambiguous(
-            self, logger):
+            self):
         TestPerson.objects.create(first_name="Jill", last_name="Jones")
         TestPerson.objects.create(first_name="Jack", last_name="Jones")
         house = TestHouse.objects.create(address='Bottom of the hill')
@@ -135,7 +156,11 @@ class TestModelAction(TestCase):
         sut = ModelAction(TestHouse, ['address'], fields)
         sut.update_from_fields(house)
         self.assertEqual(None, house.owner)
-        self.assertTrue(logger.warn.called)
+
+        for msg in self.logger_messages['warning']:
+            self.assertIn('Found multiple TestPerson objects', msg)
+            self.assertIn(str({'last_name': 'Jones'}), msg)
+
 
     def test_related_fields_update_uses_all_available_filters(self):
         person = TestPerson.objects.create(first_name="John",

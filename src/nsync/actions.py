@@ -6,6 +6,7 @@ from django.contrib.contenttypes.fields import ContentType
 from .models import ExternalKeyMapping
 from collections import defaultdict
 import logging
+from .logging import StyleAdapter
 
 """
 NSync actions for updating Django models
@@ -20,7 +21,8 @@ from raw input.
 """
 
 logger = logging.getLogger(__name__)
-
+logger.addHandler(logging.NullHandler()) # http://pieces.openpolitics.com/2012/04/python-logging-best-practices/
+logger = StyleAdapter(logger)
 
 class ModelAction:
     """
@@ -125,14 +127,15 @@ class ModelAction:
                         target = field.related_model.objects.get(**get_by)
                         setattr(object, attribute, target)
                     except ObjectDoesNotExist as e:
-                        logger.warn('Could not find {} with {} for {}[{}].{}',
+                        logger.warning(
+                            'Could not find {} with {} for {}[{}].{}',
                             field.related_model.__name__,
                             get_by,
                             object.__class__.__name__,
                             object,
                             field.verbose_name)
                     except MultipleObjectsReturned as e:
-                        logger.warn(
+                        logger.warning(
                             'Found multiple {} objects with {} for {}[{}].{}',
                             field.related_model.__name__,
                             get_by,
@@ -140,7 +143,7 @@ class ModelAction:
                             object,
                             field.verbose_name)
             except FieldDoesNotExist as e:
-                logger.warn( 'Attibute "{}" does not exist on {}[{}]',
+                logger.warning( 'Attibute "{}" does not exist on {}[{}]',
                     attribute,
                     object.__class__.__name__,
                     object)
