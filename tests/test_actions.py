@@ -651,6 +651,31 @@ class TestUpdateModelWithReferenceAction(TestCase):
         self.assertEqual(person.first_name, 'John')
         self.assertEqual(person.last_name, 'Smith')
 
+    def test_it_only_deletes_the_matched_object_if_it_is_not_the_linked_object(self):
+        """
+        Tests that if there are both a linked and matched object (which is the
+        standard case!!!), the matched_object is only removed if it is actually
+        a different object.
+        """
+        person = TestPerson.objects.create(first_name='John',
+                                                   last_name='Jackson')
+        house = TestHouse.objects.create(address='Bottom of the hill',
+                                         owner=person)
+        mapping = ExternalKeyMapping.objects.create(
+            external_system=self.external_system,
+            external_key='PersonJohn',
+            content_type = ContentType.objects.get_for_model(
+                TestPerson),
+            content_object = person,
+            object_id = person.id)
+
+        with patch.object(self.update_john, 'find_objects') as find_objects:
+            find_objects.return_value.exists.return_value = True
+            find_objects.return_value.get.return_value = person
+            with patch.object(person, 'delete') as delete:
+                self.update_john.execute()
+                delete.assert_not_called()
+
 
 class TestDeleteModelAction(TestCase):
     def test_no_objects_are_deleted_if_none_are_matched(self):

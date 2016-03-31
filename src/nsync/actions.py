@@ -301,8 +301,10 @@ class UpdateModelWithReferenceAction(UpdateModelAction):
         if self.find_objects().exists():
             matched_object=self.find_objects().get()
 
-        # If both matched and linked objects exist, get rid of the matched
-        if matched_object and linked_object:
+        # If both matched and linked objects exist but are different,
+        # get rid of the matched one
+        if matched_object and linked_object and (matched_object != 
+                                                 linked_object):
             matched_object.delete()
 
         # Choose the most appropriate object to update
