@@ -1,5 +1,5 @@
 
-__version__ = '0.3.3'
+__version__ = '0.3.4'
 
 __title__ = 'django-nsync'
 __description__ = 'Django N Sync provides a simple way to keep your Django ' \
