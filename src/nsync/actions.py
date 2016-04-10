@@ -100,7 +100,7 @@ class ModelAction:
         # filtering against many fields is possible
         referential_attributes = defaultdict(dict)
         for attribute, value in self.fields.items():
-            if self.REFERRED_TO_DELIMITER in attribute:
+            if self.REFERRED_TO_DELIMITER in attribute and value != '':
                 ref_attr = attribute.split(self.REFERRED_TO_DELIMITER)
                 referential_attributes[ref_attr[0]][ref_attr[1]] = value
             else:

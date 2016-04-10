@@ -178,6 +178,31 @@ class TestModelAction(TestCase):
         sut.update_from_fields(house)
         self.assertEqual(person, house.owner)
 
+    def test_related_fields_update_does_not_use_filters_with_values_as_empty_strings(self):
+        """
+            This effectively prevents over-specification, and allows files
+            to be constructed with "or" style relations
+        """
+        jill = TestPerson.objects.create(first_name="Jill", last_name="Hill")
+        jack = TestPerson.objects.create(first_name="Jack", last_name="Shack")
+        house = TestHouse.objects.create(address='Bottom of the hill')
+
+        fields = {
+            'address': 'Bottom of the hill',
+            'owner=>first_name': '',
+            'owner=>last_name': 'Shack'}
+        sut = ModelAction(TestHouse, ['address'], fields)
+        sut.update_from_fields(house, True)
+        self.assertEqual(jack, house.owner)
+
+        fields = {
+            'address': 'Bottom of the hill',
+            'owner=>first_name': 'Jill',
+            'owner=>last_name': ''}
+        sut = ModelAction(TestHouse, ['address'], fields)
+        sut.update_from_fields(house, True)
+        self.assertEqual(jill, house.owner)
+
     def test_update_from_fields_does_not_update_values_that_are_not_empty(
             self):
         john = TestPerson(first_name='John', last_name='Smith')
