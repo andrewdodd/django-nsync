@@ -69,13 +69,13 @@ class ModelAction:
     def type(self):
         return ''
 
-    def find_objects(self):
-        """Finds all objects that match the provided matching information"""
+    def get_object(self):
+        """Finds the object that matches the provided matching information"""
         filter_by = {
             field: value for (
                 field,
                 value) in self.fields.items() if field in self.match_on}
-        return self.model.objects.filter(**filter_by)
+        return self.model.objects.get(**filter_by)
 
     def execute(self):
         """Does nothing"""
@@ -158,8 +158,10 @@ class CreateModelAction(ModelAction):
     """
 
     def execute(self):
-        if self.find_objects().exists():
-            return self.find_objects().get()
+        try:
+            return self.get_object()
+        except ObjectDoesNotExist as e:
+            pass
 
         obj=self.model()
         # NB: Create uses force to override defaults
@@ -250,7 +252,7 @@ class UpdateModelAction(ModelAction):
 
     def execute(self):
         try:
-            obj=self.find_objects().get()
+            obj=self.get_object()
             self.update_from_fields(obj, self.force_update)
             obj.save()
 
@@ -298,8 +300,10 @@ class UpdateModelWithReferenceAction(UpdateModelAction):
         linked_object=mapping.content_object
 
         matched_object=None
-        if self.find_objects().exists():
-            matched_object=self.find_objects().get()
+        try:
+            matched_object=self.get_object()
+        except ObjectDoesNotExist:
+            pass
 
         # If both matched and linked objects exist but are different,
         # get rid of the matched one
@@ -350,7 +354,7 @@ class DeleteIfOnlyReferenceModelAction(ModelAction):
 
     def execute(self):
         try:
-            obj=self.delete_action.find_objects().get()
+            obj=self.delete_action.get_object()
 
             key_mapping=ExternalKeyMapping.objects.get(
                 object_id=obj.id,
@@ -378,8 +382,11 @@ class DeleteModelAction(ModelAction):
 
     def execute(self):
         """Forcibly delete any objects found by the
-        ModelAction.find_objects() method."""
-        self.find_objects().delete()
+        ModelAction.get_object() method."""
+        try:
+            self.get_object().delete()
+        except ObjectDoesNotExist:
+            pass
 
 
 class DeleteExternalReferenceAction:

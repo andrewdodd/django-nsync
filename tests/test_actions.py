@@ -93,20 +93,20 @@ class TestModelAction(TestCase):
     def test_it_attempts_to_find_through_the_provided_model_class(self):
         model = MagicMock()
         found_object = ModelAction(model, ['matchfield'],
-                                   {'matchfield': 'value'}).find_objects()
-        model.objects.filter.assert_called_once_with(matchfield='value')
-        self.assertEqual(found_object, model.objects.filter.return_value)
+                                   {'matchfield': 'value'}).get_object()
+        model.objects.get.assert_called_once_with(matchfield='value')
+        self.assertEqual(found_object, model.objects.get.return_value)
 
     def test_it_attempts_to_find_with_all_matchfields(self):
         model = MagicMock()
         found_object = ModelAction(
             model,
             ['matchfield1', 'matchfield2'],
-            {'matchfield1': 'value1', 'matchfield2': 'value2'}).find_objects()
-        model.objects.filter.assert_called_once_with(
+            {'matchfield1': 'value1', 'matchfield2': 'value2'}).get_object()
+        model.objects.get.assert_called_once_with(
             matchfield1='value1',
             matchfield2='value2')
-        self.assertEqual(found_object, model.objects.filter.return_value)
+        self.assertEqual(found_object, model.objects.get.return_value)
 
     def test_update_from_fields_changes_values_on_object(self):
         john = TestPerson(first_name='John')
@@ -694,9 +694,8 @@ class TestUpdateModelWithReferenceAction(TestCase):
             content_object = person,
             object_id = person.id)
 
-        with patch.object(self.update_john, 'find_objects') as find_objects:
-            find_objects.return_value.exists.return_value = True
-            find_objects.return_value.get.return_value = person
+        with patch.object(self.update_john, 'get_object') as get_object:
+            get_object.return_value.return_value = person
             with patch.object(person, 'delete') as delete:
                 self.update_john.execute()
                 delete.assert_not_called()
@@ -726,11 +725,9 @@ class TestDeleteIfOnlyReferenceModelAction(TestCase):
 
     def test_it_does_nothing_if_object_does_not_exist(self):
         delete_action = MagicMock()
-        delete_action.find_objects.return_value.get.side_effect = \
-            ObjectDoesNotExist
+        delete_action.get_object.side_effect = ObjectDoesNotExist
         DeleteIfOnlyReferenceModelAction(ANY, ANY, delete_action).execute()
-        delete_action.find_objects.assert_called_with()
-        delete_action.find_objects.return_value.get.assert_called_with()
+        delete_action.get_object.assert_called_with()
         self.assertFalse(delete_action.execute.called)
 
     def test_it_does_nothing_if_no_key_mapping_is_found(
@@ -738,7 +735,7 @@ class TestDeleteIfOnlyReferenceModelAction(TestCase):
         john = TestPerson.objects.create(first_name='John')
         delete_action = MagicMock()
         delete_action.model = TestPerson
-        delete_action.find_objects.return_value.get.return_value = john
+        delete_action.get_object.return_value = john
         DeleteIfOnlyReferenceModelAction(self.external_system, 'SomeKey',
                                          delete_action).execute()
         self.assertFalse(delete_action.execute.called)
@@ -753,7 +750,7 @@ class TestDeleteIfOnlyReferenceModelAction(TestCase):
             object_id=john.id)
         delete_action = MagicMock()
         delete_action.model = TestPerson
-        delete_action.find_objects.return_value.get.return_value = john
+        delete_action.get_object.return_value = john
         DeleteIfOnlyReferenceModelAction(self.external_system, 'Person123',
                                          delete_action).execute()
         delete_action.execute.assert_called_with()
@@ -770,7 +767,7 @@ class TestDeleteIfOnlyReferenceModelAction(TestCase):
             object_id=john.id)
         delete_action = MagicMock()
         delete_action.model = TestPerson
-        delete_action.find_objects.return_value.get.return_value = john
+        delete_action.get_object.return_value = john
         DeleteIfOnlyReferenceModelAction(self.external_system, 'Person123',
                                          delete_action).execute()
         self.assertFalse(delete_action.execute.called)
@@ -792,7 +789,7 @@ class TestDeleteIfOnlyReferenceModelAction(TestCase):
             object_id=john.id)
         delete_action = MagicMock()
         delete_action.model = TestPerson
-        delete_action.find_objects.return_value.get.return_value = john
+        delete_action.get_object.return_value = john
         DeleteIfOnlyReferenceModelAction(self.external_system, 'Person123',
                                          delete_action).execute()
         self.assertFalse(delete_action.execute.called)
