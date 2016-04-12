@@ -3,6 +3,7 @@ from django.core.exceptions import (
     ObjectDoesNotExist,
     FieldDoesNotExist)
 from django.contrib.contenttypes.fields import ContentType
+from django.db.models.query_utils import Q
 from .models import ExternalKeyMapping
 from collections import defaultdict
 import logging
@@ -23,6 +24,41 @@ from raw input.
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler()) # http://pieces.openpolitics.com/2012/04/python-logging-best-practices/
 logger = StyleAdapter(logger)
+
+
+class ObjectSelector:
+    OPERATORS = ['|', '&']
+
+    def __init__(self, match_on):
+        self.match_on = match_on
+
+    def check_fields_available(self, available_fields):
+        for field_name in self.match_on:
+            if field_name in self.OPERATORS:
+                continue
+
+            if field_name not in available_fields:
+                raise ValueError(
+                    'field_name({}) must be in fields({})'.format(
+                        field_name, available_fields))
+        return True
+
+    def get_by(self, available_fields):
+        q = Q()
+        use_or = '|' == self.match_on[-1]
+
+        if use_or:
+            match_on = self.match_on[:-1]
+        else:
+            match_on = self.match_on
+
+        for match in match_on:
+            if use_or:
+                q = q | Q(**{match: available_fields[match]})
+            else:
+                q = q & Q(**{match: available_fields[match]})
+
+        return q
 
 class ModelAction:
     """
@@ -48,11 +84,8 @@ class ModelAction:
             raise ValueError('match_on({}) must be not "empty"'.format(
                 match_on))
 
-        for field_name in match_on:
-            if field_name not in fields:
-                raise ValueError(
-                    'field_name({}) must be in fields({})'.format(
-                        field_name, fields))
+        match_on = ObjectSelector(match_on)
+        match_on.check_fields_available(fields)
 
         self.model = model
         self.match_on = match_on
@@ -62,7 +95,7 @@ class ModelAction:
         return '{} - Model:{} - MatchFields:{} - Fields:{}'.format(
             self.__class__.__name__,
             self.model.__name__,
-            self.match_on,
+            self.match_on.match_on,
             self.fields)
 
     @property
@@ -71,11 +104,7 @@ class ModelAction:
 
     def get_object(self):
         """Finds the object that matches the provided matching information"""
-        filter_by = {
-            field: value for (
-                field,
-                value) in self.fields.items() if field in self.match_on}
-        return self.model.objects.get(**filter_by)
+        return self.model.objects.get(self.match_on.get_by(self.fields))
 
     def execute(self):
         """Does nothing"""

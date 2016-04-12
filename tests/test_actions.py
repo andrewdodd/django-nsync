@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch, ANY
 
 from django.contrib.contenttypes.fields import ContentType
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models.query_utils import Q
 from django.test import TestCase
 from nsync.actions import (
     CreateModelAction,
@@ -13,6 +14,7 @@ from nsync.actions import (
     DeleteIfOnlyReferenceModelAction,
     SyncActions,
     ActionFactory,
+    ObjectSelector,
     ModelAction)
 from nsync.models import ExternalSystem, ExternalKeyMapping
 
@@ -39,6 +41,22 @@ class TestSyncActions(TestCase):
         self.assertIn('d*', str(SyncActions(delete=True, force=True)))
         self.assertIn('cu*',
                       str(SyncActions(create=True, update=True, force=True)))
+
+
+class TestObjectSelector(TestCase):
+    def test_it_raises_an_error_if_match_on_field_not_in_available_fields(self):
+        with self.assertRaises(ValueError):
+            ObjectSelector(['field']).check_fields_available({'' :'value'})
+
+    def test_it_does_not_raise_error_for_pipe_character(self):
+        ObjectSelector(['|']).check_fields_available({'' :'value'})
+
+    def test_it_does_not_raise_error_for_ampersand_character(self):
+        ObjectSelector(['&']).check_fields_available({'' :'value'})
+
+    def test_get_by_returns_a_AND_filter_by_default(self):
+        sut = ObjectSelector(['field1', 'field2'])
+        result = sut.get_by({'field1': 'value1', 'field2': 'value2'})
 
 
 class TestModelAction(TestCase):
@@ -70,13 +88,12 @@ class TestModelAction(TestCase):
         self.assertIn("MatchFields:['match_field']", result)
         self.assertIn("Fields:{'match_field': 'value'}", result)
 
-
     def test_creating_without_a_model_raises_error(self):
         with self.assertRaises(ValueError):
             ModelAction(None, None)
 
     # TODO - Perhaps update this to look for the attribute on the class?
-    def test_it_raises_an_error_if_matchfieldname_is_empty(self):
+    def test_it_raises_an_error_if_match_on_is_empty(self):
         """
         Test that an error is raises if an empty match_on value is provided,
         even if the fields dict has a matching key
@@ -84,7 +101,7 @@ class TestModelAction(TestCase):
         with self.assertRaises(ValueError):
             ModelAction(ANY, [], {'': 'value'})
 
-    def test_it_raises_error_if_any_matchfieldname_not_in_fields(self):
+    def test_it_raises_error_if_any_match_on_not_in_fields(self):
         with self.assertRaises(ValueError):
             ModelAction(ANY, 
                     ['matchingfield', 'missingfield'], 
@@ -94,7 +111,6 @@ class TestModelAction(TestCase):
         model = MagicMock()
         found_object = ModelAction(model, ['matchfield'],
                                    {'matchfield': 'value'}).get_object()
-        model.objects.get.assert_called_once_with(matchfield='value')
         self.assertEqual(found_object, model.objects.get.return_value)
 
     def test_it_attempts_to_find_with_all_matchfields(self):
@@ -103,10 +119,42 @@ class TestModelAction(TestCase):
             model,
             ['matchfield1', 'matchfield2'],
             {'matchfield1': 'value1', 'matchfield2': 'value2'}).get_object()
-        model.objects.get.assert_called_once_with(
-            matchfield1='value1',
-            matchfield2='value2')
+        self.assertEqual(str(Q(matchfield1='value1') & Q(matchfield2='value2')),
+                         str(model.objects.get.call_args[0][0]))
         self.assertEqual(found_object, model.objects.get.return_value)
+
+    def test_it_builds_OR_Q_object_if_last_token_is_pipe(self):
+        model = MagicMock()
+        found_object = ModelAction(
+            model,
+            ['matchfield1', 'matchfield2', '|'],
+            {'matchfield1': 'value1', 'matchfield2': 'value2'}).get_object()
+        self.assertEqual(str(Q() | Q(matchfield1='value1') | Q(matchfield2='value2')),
+                         str(model.objects.get.call_args[0][0]))
+        self.assertEqual(found_object, model.objects.get.return_value)
+
+    def test_it_finds_an_object_with_alternative_options(self):
+        model = MagicMock()
+        found_object = ModelAction(
+            model,
+            ['matchfield1', 'matchfield2', '|'],
+            {'matchfield1': 'value1', 'matchfield2': 'value2'}).get_object()
+        self.assertEqual(str(Q() | Q(matchfield1='value1') | Q(matchfield2='value2')),
+                         str(model.objects.get.call_args[0][0]))
+        self.assertEqual(found_object, model.objects.get.return_value)
+        john = TestPerson.objects.create(first_name='John', last_name='Smith')
+        jill = TestPerson.objects.create(first_name='Jill', last_name='Smyth')
+
+        john = ModelAction(TestPerson,
+                ['first_name', 'last_name', '|'],
+                {'first_name': '', 'last_name': 'Smith'}).get_object()
+        jill = ModelAction(TestPerson,
+                ['first_name', 'last_name', '|'],
+                {'first_name': 'Jill', 'last_name': ''}).get_object()
+
+        self.assertEqual('Smith', john.last_name)
+        self.assertEqual('Smyth', jill.last_name)
+
 
     def test_update_from_fields_changes_values_on_object(self):
         john = TestPerson(first_name='John')

@@ -87,3 +87,27 @@ class TestIntegrations(TestCase):
         self.assertEqual(3, house3.floors)
         self.assertEqual(4, house4.floors)
 
+    def test_ORd_match_fields_select_correct_object(self):
+        house1 = TestHouse.objects.create(address='OnlyAddress')
+        house2 = TestHouse.objects.create(country='OnlyCountry')
+        house3 = TestHouse.objects.create(address='BothAddress',   country='BothCountry')
+
+        csv_file_obj = tempfile.NamedTemporaryFile(mode='w')
+        csv_file_obj.writelines([
+            'action_flags,match_on,address,country,floors\n',
+            'cu*,address country |,OnlyAddress,,1\n',
+            'cu*,address country |,,OnlyCountry,2\n',
+            'cu*,address country |,BothAddress,BothCountry,3\n',
+        ])
+        csv_file_obj.seek(0)
+
+        call_command('syncfile', 'TestSystem', 'tests', 'TestHouse',
+                     csv_file_obj.name)
+
+        for object in [house1, house2, house3]:
+            object.refresh_from_db()
+
+        self.assertEqual(1, house1.floors)
+        self.assertEqual(2, house2.floors)
+        self.assertEqual(3, house3.floors)
+
