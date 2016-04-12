@@ -191,6 +191,10 @@ class CreateModelAction(ModelAction):
             return self.get_object()
         except ObjectDoesNotExist as e:
             pass
+        except MultipleObjectsReturned as e:
+            logger.warning('Mulitple objects found - {} Error:{}', str(self), e)
+            return None
+
 
         obj=self.model()
         # NB: Create uses force to override defaults
@@ -251,6 +255,7 @@ class CreateModelWithReferenceAction(CreateModelAction):
         return model_obj
 
 
+from django.db import IntegrityError, transaction
 class UpdateModelAction(ModelAction):
     """
     Action to update the fields of a model object, but not create an
@@ -283,12 +288,19 @@ class UpdateModelAction(ModelAction):
         try:
             obj=self.get_object()
             self.update_from_fields(obj, self.force_update)
-            obj.save()
+
+            with transaction.atomic():
+                obj.save()
 
             return obj
         except ObjectDoesNotExist:
             return None
-
+        except MultipleObjectsReturned as e:
+            logger.warning('Mulitple objects found - {} Error:{}', str(self), e)
+            return None
+        except IntegrityError as e:
+            logger.warning('Integrity issue - {} Error:{}', str(self), e)
+            return None
 
 class UpdateModelWithReferenceAction(UpdateModelAction):
     """
@@ -333,6 +345,9 @@ class UpdateModelWithReferenceAction(UpdateModelAction):
             matched_object=self.get_object()
         except ObjectDoesNotExist:
             pass
+        except MultipleObjectsReturned as e:
+            logger.warning('Mulitple objects found - {} Error:{}', str(self), e)
+            return None
 
         # If both matched and linked objects exist but are different,
         # get rid of the matched one
@@ -397,7 +412,7 @@ class DeleteIfOnlyReferenceModelAction(ModelAction):
                 # The key mapping is not 'this' systems key mapping
                 pass
         except MultipleObjectsReturned:
-            # There are multiple key mappings, we shouldn't delete the object
+            # There are multiple key mappings or multiple target objects, we shouldn't delete the object
             return
         except ObjectDoesNotExist:
             return
@@ -416,6 +431,9 @@ class DeleteModelAction(ModelAction):
             self.get_object().delete()
         except ObjectDoesNotExist:
             pass
+        except MultipleObjectsReturned as e:
+            logger.warning('Mulitple objects found - {} Error:{}', str(self), e)
+            return None
 
 
 class DeleteExternalReferenceAction:
@@ -608,3 +626,4 @@ class SyncActions:
 
     def is_impotent(self):
         return not (self.create or self.update or self.delete)
+
