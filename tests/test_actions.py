@@ -71,6 +71,9 @@ class TestObjectSelector(TestCase, QTestMixin):
     def test_it_does_not_raise_error_for_ampersand_character(self):
         ObjectSelector(['&'], {'' :'value'})
 
+    def test_it_does_not_raise_error_for_tilde_character(self):
+        ObjectSelector(['~'], {'' :'value'})
+
     def test_it_supports_a_single_get_by_field(self):
         sut = ObjectSelector(['field1'], self.fields)
         result = sut.get_by()
@@ -91,15 +94,30 @@ class TestObjectSelector(TestCase, QTestMixin):
         result = sut.get_by()
         self.assertQEqual(Q(field1='value1') | Q(field2='value2'), result)
 
+    def test_it_supports_postfix_style_NOT_filter_by(self):
+        sut = ObjectSelector(['field1', '~'], self.fields)
+        result = sut.get_by()
+        self.assertQEqual(~Q(field1='value1'), result)
+
     def test_it_supports_postfix_style_filter_by_options_extended(self):
-        sut = ObjectSelector(['field1', 'field2', '&', 'field3', 'field4', '&', '|'], self.fields)
+        sut = ObjectSelector(['field1', 'field2', '&', 'field3', '~', 'field4', '&', '|'], self.fields)
         result = sut.get_by()
         self.assertQEqual((Q(field1='value1') & Q(field2='value2')) |
-                              (Q(field3='value3') & Q(field4='value4')), result)
+                              (~Q(field3='value3') & Q(field4='value4')), result)
 
-    def test_it_raises_an_error_if_insufficient_operands(self):
+    def test_it_raises_an_error_if_insufficient_operands_for_AND(self):
         with self.assertRaises(ValueError):
             sut = ObjectSelector(['field1', '&'], self.fields)
+            result = sut.get_by()
+
+    def test_it_raises_an_error_if_insufficient_operands_for_OR(self):
+        with self.assertRaises(ValueError):
+            sut = ObjectSelector(['field1', '|'], self.fields)
+            result = sut.get_by()
+
+    def test_it_raises_an_error_if_insufficient_operands_for_NOT(self):
+        with self.assertRaises(ValueError):
+            sut = ObjectSelector(['~'], self.fields)
             result = sut.get_by()
 
     def test_it_raises_an_error_if_insufficient_operators(self):

@@ -27,7 +27,7 @@ logger = StyleAdapter(logger)
 
 
 class ObjectSelector:
-    OPERATORS = ['|', '&']
+    OPERATORS = set(['|', '&', '~'])
 
     def __init__(self, match_on, available_fields):
         for field_name in match_on:
@@ -47,7 +47,7 @@ class ObjectSelector:
             return Q(**{match: self.fields[match]})
 
         # if no operators present, then just AND all of the match_ons
-        if not ('&' in self.match_on or '|' in self.match_on):
+        if len(self.OPERATORS.intersection(self.match_on)) == 0:
             match = self.match_on[0]
             q = build_selector(match)
             for match in self.match_on[1:]:
@@ -59,6 +59,13 @@ class ObjectSelector:
         stack = []
         for match in self.match_on:
             if match in self.OPERATORS:
+                if match is '~':
+                    if len(stack) < 1:
+                        raise ValueError('Insufficient operands for operator:{}', match)
+
+                    stack.append(~stack.pop())
+                    continue
+
                 if len(stack) < 2:
                     raise ValueError('Insufficient operands for operator:{}', match)
 
