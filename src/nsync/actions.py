@@ -26,6 +26,32 @@ logger.addHandler(logging.NullHandler()) # http://pieces.openpolitics.com/2012/0
 logger = StyleAdapter(logger)
 
 
+class DissimilarActionTypesError(Exception):
+
+    def __init__(self, action_type1, action_type2, field_name, model_name):
+        self.action_types = [action_type1, action_type2]
+        self.field_name = field_name
+        self.model_name = model_name
+
+    def __str__(self):
+        return 'Dissimilar action types[{}] for many-to-many field {} on model {}'.format(
+            ','.join(self.action_types),
+            self.field_name,
+            self.model_name)
+
+class UnknownActionType(Exception):
+
+    def __init__(self, action_type,field_name, model_name):
+        self.action_type = action_type
+        self.field_name = field_name
+        self.model_name = model_name
+
+    def __str__(self):
+        return 'Unknown action type[{}] for many-to-many field {} on model {}'.format(
+            self.action_type,
+            self.field_name,
+            self.model_name)
+
 class ObjectSelector:
     OPERATORS = set(['|', '&', '~'])
 
@@ -181,8 +207,35 @@ class ModelAction:
                             continue
 
                     try:
-                        target = field.related_model.objects.get(**get_by)
-                        setattr(object, attribute, target)
+                        if field.many_to_many:
+                            action_type = None
+                            get_by_exact = {}
+                            for k,v in get_by.items():
+                                if action_type is None:
+                                    action_type = k[0]
+                                elif action_type != k[0]:
+                                    raise DissimilarActionTypesError(
+                                        action_type, k[0], field.verbose_name,
+                                        object.__class__.__name__)
+                                get_by_exact[k[1:]] = v
+
+                            if action_type not in '+-=':
+                                raise UnknownActionType(action_type, 
+                                    field.verbose_name,
+                                    object.__class__.__name__)
+
+                            target = field.related_model.objects.get(**get_by_exact)
+
+                            if action_type is '+':
+                                getattr(object, field.name).add(target)
+                            elif action_type is '-':
+                                getattr(object, field.name).remove(target)
+                            elif action_type is '=':
+                                getattr(object, field.name).set([target])
+
+                        else:
+                            target = field.related_model.objects.get(**get_by)
+                            setattr(object, attribute, target)
                     except ObjectDoesNotExist as e:
                         logger.warning(
                             'Could not find {} with {} for {}[{}].{}',
@@ -204,6 +257,12 @@ class ModelAction:
                     attribute,
                     object.__class__.__name__,
                     object)
+
+            except DissimilarActionTypesError as e:
+                logger.warning('{}', e)
+
+            except UnknownActionType as e:
+                logger.warning('{}', e)
 
 
 class CreateModelAction(ModelAction):

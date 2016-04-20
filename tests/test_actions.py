@@ -18,7 +18,7 @@ from nsync.actions import (
     ModelAction)
 from nsync.models import ExternalSystem, ExternalKeyMapping
 
-from tests.models import TestPerson, TestHouse
+from tests.models import TestPerson, TestHouse, TestBuilder
 
 
 class TestSyncActions(TestCase):
@@ -361,6 +361,106 @@ class TestModelAction(TestCase):
         sut = ModelAction(TestHouse, ['address'], fields)
         sut.update_from_fields(house, True)
         self.assertEqual(jack, house.owner)
+
+    def test_it_does_not_update_many_to_many_fields_with_simple_referred_to_delimiter(self):
+        bob = TestBuilder.objects.create(first_name="Bob", last_name="The Builder")
+        house = TestHouse.objects.create(address='Bottom of the hill')
+
+        fields = {
+            'first_name': 'Bob',
+            'buildings=>address': 'Bottom of the hill',
+            }
+        sut = ModelAction(TestBuilder, ['first_name'], fields)
+        sut.update_from_fields(house, True)
+        self.assertNotIn(house, bob.buildings.all())
+
+    def test_it_adds_elements_to_many_to_many_with_plus_referred_to_delimiter(self):
+        bob = TestBuilder.objects.create(first_name="Bob", last_name="The Builder")
+        house = TestHouse.objects.create(address='Bottom of the hill')
+
+        fields = {
+            'first_name': 'Bob',
+            'buildings=>+address': 'Bottom of the hill',
+            }
+        sut = ModelAction(TestBuilder, ['first_name'], fields)
+        sut.update_from_fields(bob, True)
+        self.assertIn(house, bob.buildings.all())
+
+    def test_it_removes_elements_from_many_to_many_with_minus_referred_to_delimiter(self):
+        house = TestHouse.objects.create(address='Bottom of the hill')
+        bob = TestBuilder.objects.create(first_name="Bob", last_name="The Builder")
+        bob.buildings.add(house)
+        bob.save()
+
+        fields = {
+            'first_name': 'Bob',
+            'buildings=>-address': 'Bottom of the hill',
+            }
+        sut = ModelAction(TestBuilder, ['first_name'], fields)
+        sut.update_from_fields(bob, True)
+        self.assertNotIn(house, bob.buildings.all())
+
+    def test_it_replaces_all_elements_in_many_to_many_with_equals_referred_to_delimiter(self):
+        house1 = TestHouse.objects.create(address='Bottom of the hill')
+        house2 = TestHouse.objects.create(address='Top of the hill')
+        bob = TestBuilder.objects.create(first_name="Bob", last_name="The Builder")
+        bob.buildings.add(house1)
+        bob.save()
+
+        fields = {
+            'first_name': 'Bob',
+            'buildings=>=address': 'Top of the hill',
+            }
+        sut = ModelAction(TestBuilder, ['first_name'], fields)
+        sut.update_from_fields(bob, True)
+        self.assertNotIn(house1, bob.buildings.all())
+        self.assertIn(house2, bob.buildings.all())
+
+    def test_it_uses_all_related_fields_to_find_targets_for_many_to_many_fields(self):
+        house1 = TestHouse.objects.create(address='Bottom of the hill', country='Australia')
+        house2 = TestHouse.objects.create(address='Bottom of the hill', country='Belgium')
+        bob = TestBuilder.objects.create(first_name="Bob", last_name="The Builder")
+        bob.buildings.add(house1)
+        bob.save()
+
+        fields = {
+            'first_name': 'Bob',
+            'buildings=>=address': 'Bottom of the hill',
+            'buildings=>=country': 'Belgium',
+            }
+        sut = ModelAction(TestBuilder, ['first_name'], fields)
+        sut.update_from_fields(bob, True)
+        self.assertNotIn(house1, bob.buildings.all())
+        self.assertIn(house2, bob.buildings.all())
+
+    def test_it_logs_an_error_if_action_type_for_many_to_many_referred_fields_is_unknown(self):
+        bob = TestBuilder.objects.create(first_name="Bob", last_name="The Builder")
+
+        fields = {
+            'first_name': 'Bob',
+            'buildings=>*address': 'Bottom of the hill',
+            }
+
+        sut = ModelAction(TestBuilder, ['first_name'], fields)
+        sut.update_from_fields(bob, True)
+
+        for msg in self.logger_messages['warning']:
+            self.assertIn('Unknown action type', msg)
+
+    def test_it_logs_an_error_if_action_type_for_many_to_many_referred_fields_is_dissimilar(self):
+        bob = TestBuilder.objects.create(first_name="Bob", last_name="The Builder")
+
+        fields = {
+            'first_name': 'Bob',
+            'buildings=>+address': 'Bottom of the hill',
+            'buildings=>=country': 'Belgium',
+            }
+
+        sut = ModelAction(TestBuilder, ['first_name'], fields)
+        sut.update_from_fields(bob, True)
+
+        for msg in self.logger_messages['warning']:
+            self.assertIn('Dissimilar action types', msg)
 
 
 class TestActionFactory(TestCase):

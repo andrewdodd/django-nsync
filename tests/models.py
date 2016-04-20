@@ -37,3 +37,15 @@ class TestHouse(models.Model):
             ', {}'.format(self.country) if self.country else '',
             ' - {} floors'.format(self.floors) if self.floors else '',
             ' - Family:{}'.format(self.owner.last_name) if self.owner else '')
+
+
+class TestBuilder(TestPerson):
+    company = models.CharField(
+        blank=False,
+        max_length=50,
+        default='Self employed'
+    )
+    buildings = models.ManyToManyField(
+        TestHouse,
+        related_name='builders'
+    )
