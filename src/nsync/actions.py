@@ -231,7 +231,11 @@ class ModelAction:
                             elif action_type is '-':
                                 getattr(object, field.name).remove(target)
                             elif action_type is '=':
-                                getattr(object, field.name).set([target])
+                                attr = getattr(object, field.name)
+                                # Django 1.9 impl  => getattr(object, field.name).set([target])
+                                attr.clear()
+                                for t in set([target]):
+                                    attr.add(t)
 
                         else:
                             target = field.related_model.objects.get(**get_by)
