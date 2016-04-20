@@ -42,21 +42,70 @@ class TestSyncActions(TestCase):
         self.assertIn('cu*',
                       str(SyncActions(create=True, update=True, force=True)))
 
+# http://jamescooke.info/comparing-django-q-objects.html
+class QTestMixin(object):
 
-class TestObjectSelector(TestCase):
+    def assertQEqual(self, left, right):
+        """
+        Assert `Q` objects are equal by ensuring that their
+        unicode outputs are equal (crappy but good enough)
+        """
+        self.assertIsInstance(left, Q)
+        self.assertIsInstance(right, Q)
+        left_u = str(left)
+        right_u = str(right)
+        self.assertEqual(left_u, right_u)
+
+
+class TestObjectSelector(TestCase, QTestMixin):
+    def setUp(self):
+        self.fields = { 'field' + str(i): 'value' + str(i) for i in range(1,6)}
+
     def test_it_raises_an_error_if_match_on_field_not_in_available_fields(self):
         with self.assertRaises(ValueError):
-            ObjectSelector(['field']).check_fields_available({'' :'value'})
+            ObjectSelector(['field'], {'' :'value'})
 
     def test_it_does_not_raise_error_for_pipe_character(self):
-        ObjectSelector(['|']).check_fields_available({'' :'value'})
+        ObjectSelector(['|'], {'' :'value'})
 
     def test_it_does_not_raise_error_for_ampersand_character(self):
-        ObjectSelector(['&']).check_fields_available({'' :'value'})
+        ObjectSelector(['&'], {'' :'value'})
 
-    def test_get_by_returns_a_AND_filter_by_default(self):
-        sut = ObjectSelector(['field1', 'field2'])
-        result = sut.get_by({'field1': 'value1', 'field2': 'value2'})
+    def test_it_supports_a_single_get_by_field(self):
+        sut = ObjectSelector(['field1'], self.fields)
+        result = sut.get_by()
+        self.assertQEqual(Q(field1='value1'), result)
+
+    def test_get_by_returns_an_AND_filter_by_default(self):
+        sut = ObjectSelector(['field1', 'field2'], self.fields)
+        result = sut.get_by()
+        self.assertQEqual(Q(field1='value1') & Q(field2='value2'), result)
+
+    def test_it_supports_postfix_style_AND_filter_by(self):
+        sut = ObjectSelector(['field1', 'field2', '&'], self.fields)
+        result = sut.get_by()
+        self.assertQEqual(Q(field1='value1') & Q(field2='value2'), result)
+
+    def test_it_supports_postfix_style_OR_filter_by(self):
+        sut = ObjectSelector(['field1', 'field2', '|'], self.fields)
+        result = sut.get_by()
+        self.assertQEqual(Q(field1='value1') | Q(field2='value2'), result)
+
+    def test_it_supports_postfix_style_filter_by_options_extended(self):
+        sut = ObjectSelector(['field1', 'field2', '&', 'field3', 'field4', '&', '|'], self.fields)
+        result = sut.get_by()
+        self.assertQEqual((Q(field1='value1') & Q(field2='value2')) |
+                              (Q(field3='value3') & Q(field4='value4')), result)
+
+    def test_it_raises_an_error_if_insufficient_operands(self):
+        with self.assertRaises(ValueError):
+            sut = ObjectSelector(['field1', '&'], self.fields)
+            result = sut.get_by()
+
+    def test_it_raises_an_error_if_insufficient_operators(self):
+        with self.assertRaises(ValueError):
+            sut = ObjectSelector(['field1', 'field2', 'field3', '&'], self.fields)
+            result = sut.get_by()
 
 
 class TestModelAction(TestCase):
@@ -129,7 +178,7 @@ class TestModelAction(TestCase):
             model,
             ['matchfield1', 'matchfield2', '|'],
             {'matchfield1': 'value1', 'matchfield2': 'value2'}).get_object()
-        self.assertEqual(str(Q() | Q(matchfield1='value1') | Q(matchfield2='value2')),
+        self.assertEqual(str(Q(matchfield1='value1') | Q(matchfield2='value2')),
                          str(model.objects.get.call_args[0][0]))
         self.assertEqual(found_object, model.objects.get.return_value)
 
@@ -139,7 +188,7 @@ class TestModelAction(TestCase):
             model,
             ['matchfield1', 'matchfield2', '|'],
             {'matchfield1': 'value1', 'matchfield2': 'value2'}).get_object()
-        self.assertEqual(str(Q() | Q(matchfield1='value1') | Q(matchfield2='value2')),
+        self.assertEqual(str(Q(matchfield1='value1') | Q(matchfield2='value2')),
                          str(model.objects.get.call_args[0][0]))
         self.assertEqual(found_object, model.objects.get.return_value)
         john = TestPerson.objects.create(first_name='John', last_name='Smith')

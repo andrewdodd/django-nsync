@@ -29,11 +29,8 @@ logger = StyleAdapter(logger)
 class ObjectSelector:
     OPERATORS = ['|', '&']
 
-    def __init__(self, match_on):
-        self.match_on = match_on
-
-    def check_fields_available(self, available_fields):
-        for field_name in self.match_on:
+    def __init__(self, match_on, available_fields):
+        for field_name in match_on:
             if field_name in self.OPERATORS:
                 continue
 
@@ -41,24 +38,49 @@ class ObjectSelector:
                 raise ValueError(
                     'field_name({}) must be in fields({})'.format(
                         field_name, available_fields))
-        return True
 
-    def get_by(self, available_fields):
-        q = Q()
-        use_or = '|' == self.match_on[-1]
+        self.match_on = match_on
+        self.fields = available_fields
 
-        if use_or:
-            match_on = self.match_on[:-1]
-        else:
-            match_on = self.match_on
+    def get_by(self):
+        def build_selector(match):
+            return Q(**{match: self.fields[match]})
 
-        for match in match_on:
-            if use_or:
-                q = q | Q(**{match: available_fields[match]})
+        # if no operators present, then just AND all of the match_ons
+        if not ('&' in self.match_on or '|' in self.match_on):
+            match = self.match_on[0]
+            q = build_selector(match)
+            for match in self.match_on[1:]:
+                q = q & build_selector(match)
+
+            return q
+
+        # process post-fix operator string
+        stack = []
+        for match in self.match_on:
+            if match in self.OPERATORS:
+                if len(stack) < 2:
+                    raise ValueError('Insufficient operands for operator:{}', match)
+
+                # remove the operands from the stack in reverse order 
+                # (preserves left-to-right reading)
+                operand2 = stack.pop()
+                operand1 = stack.pop()
+
+                if match == '|':
+                    stack.append(operand1 | operand2)
+                elif match == '&':
+                    stack.append(operand1 & operand2)
+                else:
+                    pass
             else:
-                q = q & Q(**{match: available_fields[match]})
+                stack.append(build_selector(match))
 
-        return q
+        if len(stack) != 1:
+            raise ValueError('Insufficient operators, stack:{}', stack)
+
+        return stack[0]
+
 
 class ModelAction:
     """
@@ -84,8 +106,7 @@ class ModelAction:
             raise ValueError('match_on({}) must be not "empty"'.format(
                 match_on))
 
-        match_on = ObjectSelector(match_on)
-        match_on.check_fields_available(fields)
+        match_on = ObjectSelector(match_on, fields)
 
         self.model = model
         self.match_on = match_on
@@ -104,7 +125,7 @@ class ModelAction:
 
     def get_object(self):
         """Finds the object that matches the provided matching information"""
-        return self.model.objects.get(self.match_on.get_by(self.fields))
+        return self.model.objects.get(self.match_on.get_by())
 
     def execute(self):
         """Does nothing"""
