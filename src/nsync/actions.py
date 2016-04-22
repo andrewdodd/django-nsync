@@ -457,7 +457,12 @@ class UpdateModelWithReferenceAction(UpdateModelAction):
 
         if model_obj:
             self.update_from_fields(model_obj, self.force_update)
-            model_obj.save()
+            try:
+                with transaction.atomic():
+                    model_obj.save()
+            except IntegrityError as e:
+                logger.warning('Integrity issue - {} Error:{}', str(self), e)
+                return None
 
         if model_obj:
             mapping.content_type=ContentType.objects.get_for_model(
