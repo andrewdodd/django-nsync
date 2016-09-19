@@ -229,6 +229,16 @@ class TestModelAction(TestCase):
                     {'last_name': 'Smith'}).update_from_fields(john)
         self.assertEqual('Smith', john.last_name)
 
+    def test_update_from_uses_none_if_field_is_nullable_and_value_is_empty_string(self):
+        house = TestHouse.objects.create(address='Bottom of the hill')
+        fields = {'address': 'Bottom of the hill', 'built': ''}
+
+        sut = ModelAction(TestHouse, ['address'], fields)
+        sut.update_from_fields(house)
+        house.save()
+        house.refresh_from_db()
+        self.assertEqual(house.built, None)
+
     def test_update_from_fields_updates_related_fields(self):
         person = TestPerson.objects.create(first_name="Jill",
                                            last_name="Jones")

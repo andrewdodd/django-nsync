@@ -30,10 +30,12 @@ class TestHouse(models.Model):
     country = models.CharField(max_length=100, blank=True)
     floors = models.IntegerField(blank=True, null=True)
     owner = models.ForeignKey(TestPerson, blank=True, null=True)
+    built = models.DateField(blank=True, null=True)
 
     def __str__(self):
-        return '{}{}{}{}'.format(
+        return '{} - {}{}{}{}'.format(
             self.address,
+            self.built,
             ', {}'.format(self.country) if self.country else '',
             ' - {} floors'.format(self.floors) if self.floors else '',
             ' - Family:{}'.format(self.owner.last_name) if self.owner else '')
@@ -49,3 +51,5 @@ class TestBuilder(TestPerson):
         TestHouse,
         related_name='builders'
     )
+
+

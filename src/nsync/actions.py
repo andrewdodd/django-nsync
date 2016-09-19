@@ -191,6 +191,11 @@ class ModelAction:
                     current_value = getattr(object, attribute, None)
                     if not (current_value is None or current_value is ''):
                         continue
+                try:
+                    if object._meta.get_field(attribute).null:
+                        value = None if value == '' else value
+                except FieldDoesNotExist:
+                    pass
                 setattr(object, attribute, value)
 
         for attribute, get_by in referential_attributes.items():
