@@ -1,3 +1,4 @@
+from django import VERSION
 from django.core.exceptions import (
     MultipleObjectsReturned,
     ObjectDoesNotExist,
@@ -25,6 +26,15 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler()) # http://pieces.openpolitics.com/2012/04/python-logging-best-practices/
 logger = StyleAdapter(logger)
 
+def set_value_to_remote(object, attribute, value):
+    target_attr = getattr(object, attribute)
+    if object._meta.get_field(attribute).one_to_one:
+        if VERSION[0] == 1 and VERSION[1] < 9:
+            target_attr = value
+        else:
+            target_attr.set(value)
+    else:
+        target_attr.add(value)
 
 class DissimilarActionTypesError(Exception):
 
@@ -204,10 +214,23 @@ class ModelAction:
                 # For migration advice of the get_field_by_name() call see [1]
                 # [1]: https://docs.djangoproject.com/en/1.9/ref/models/meta/#migrating-old-meta-api
 
-                if (not field.auto_created or field.concrete) \
-                        and field.related_model:
+                if field.related_model:
+                    if field.concrete:
+                        own_attribute = field.name
+                        get_current_value = getattr
+                        set_value = setattr
+                    else:
+                        own_attribute = field.get_accessor_name()
+                        def get_value_from_remote(object, attribute, default):
+                            try:
+                                return getattr(object, attribute).get()
+                            except:
+                                return default
+                        get_current_value = get_value_from_remote
+                        set_value = set_value_to_remote
+
                     if not force:
-                        current_value = getattr(object, attribute, None)
+                        current_value = get_current_value(object, own_attribute, None)
                         if current_value is not None:
                             continue
 
@@ -232,19 +255,21 @@ class ModelAction:
                             target = field.related_model.objects.get(**get_by_exact)
 
                             if action_type is '+':
-                                getattr(object, field.name).add(target)
+                                getattr(object, own_attribute).add(target)
                             elif action_type is '-':
-                                getattr(object, field.name).remove(target)
+                                getattr(object, own_attribute).remove(target)
                             elif action_type is '=':
-                                attr = getattr(object, field.name)
-                                # Django 1.9 impl  => getattr(object, field.name).set([target])
+                                attr = getattr(object, own_attribute)
+                                # Django 1.9 impl  => getattr(object, own_attribute).set([target])
                                 attr.clear()
                                 for t in set([target]):
                                     attr.add(t)
 
                         else:
                             target = field.related_model.objects.get(**get_by)
-                            setattr(object, attribute, target)
+                            set_value(object, own_attribute, target)
+                            logger.debug(object)
+
                     except ObjectDoesNotExist as e:
                         logger.warning(
                             'Could not find {} with {} for {}[{}].{}',

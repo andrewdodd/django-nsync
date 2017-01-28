@@ -249,6 +249,16 @@ class TestModelAction(TestCase):
         sut.update_from_fields(house)
         self.assertEqual(person, house.owner)
 
+    def test_update_from_fields_updates_related_fields_from_opposite_direction(self):
+        person = TestPerson.objects.create(first_name="Jill",
+                                           last_name="Jones")
+        house = TestHouse.objects.create(address='Bottom of the hill')
+        fields = {'first_name': 'Jill', 'houses=>address': 'Bottom of the hill'}
+
+        sut = ModelAction(TestPerson, ['first_name'], fields)
+        sut.update_from_fields(person)
+        self.assertEqual(house, person.houses.get())
+
     def test_error_is_logged_if_field_not_on_object(self):
         house = TestHouse.objects.create(address='Bottom of the hill')
         fields = {'address': 'Bottom of the hill', 'buyer=>last_name': 'Jones'}
@@ -393,8 +403,23 @@ class TestModelAction(TestCase):
             'buildings=>+address': 'Bottom of the hill',
             }
         sut = ModelAction(TestBuilder, ['first_name'], fields)
+
         sut.update_from_fields(bob, True)
         self.assertIn(house, bob.buildings.all())
+
+    def test_it_adds_elements_to_many_to_many_from_opposite_direction(self):
+        bob = TestBuilder.objects.create(first_name="Bob", last_name="The Builder")
+        house = TestHouse.objects.create(address='Bottom of the hill')
+
+        fields = {
+            'address': 'Bottom of the hill',
+            'builders=>+first_name': 'Bob',
+            }
+        sut = ModelAction(TestBuilder, ['address'], fields)
+
+        sut.update_from_fields(house, True)
+        self.assertIn(bob, house.builders.all())
+
 
     def test_it_removes_elements_from_many_to_many_with_minus_referred_to_delimiter(self):
         house = TestHouse.objects.create(address='Bottom of the hill')

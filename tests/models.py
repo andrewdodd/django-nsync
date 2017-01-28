@@ -29,7 +29,7 @@ class TestHouse(models.Model):
     address = models.CharField(max_length=100)
     country = models.CharField(max_length=100, blank=True)
     floors = models.IntegerField(blank=True, null=True)
-    owner = models.ForeignKey(TestPerson, blank=True, null=True)
+    owner = models.ForeignKey(TestPerson, blank=True, null=True, related_name='houses')
     built = models.DateField(blank=True, null=True)
 
     def __str__(self):
