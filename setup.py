@@ -20,6 +20,7 @@ CLASSIFIERS = [
     'Framework :: Django',
     'Framework :: Django :: 1.7',
     'Framework :: Django :: 1.8',
+    'Framework :: Django :: 2.0',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
     'Natural Language :: English',
@@ -27,6 +28,7 @@ CLASSIFIERS = [
     'Programming Language :: Python :: 3.3',
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
+    'Programming Language :: Python :: 3.6',
 ]
 INSTALL_REQUIRES = ['Django>=1.8']
 TEST_SUITE = 'runtests.run_tests'

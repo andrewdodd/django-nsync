@@ -35,10 +35,11 @@ class ExternalKeyMapping(models.Model):
     """
     content_type = models.ForeignKey(
         ContentType,
-        help_text='The type of object that is mapped to the external system.')
+        help_text='The type of object that is mapped to the external system.',
+        on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
-    external_system = models.ForeignKey(ExternalSystem)
+    external_system = models.ForeignKey(ExternalSystem, on_delete=models.CASCADE)
     external_key = models.CharField(
         blank=False,
         help_text='The key of the internal object in the external system.',
