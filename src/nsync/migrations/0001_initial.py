@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(serialize=False, verbose_name='ID', primary_key=True, auto_created=True)),
                 ('object_id', models.PositiveIntegerField()),
                 ('external_key', models.CharField(max_length=80, help_text='The key of the internal object in the external system.')),
-                ('content_type', models.ForeignKey(to='contenttypes.ContentType', help_text='The type of object that is mapped to the external system.')),
+                ('content_type', models.ForeignKey(to='contenttypes.ContentType', help_text='The type of object that is mapped to the external system.', on_delete=models.CASCADE)),
             ],
             options={
                 'verbose_name': 'External Key Mapping',
@@ -37,7 +37,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='externalkeymapping',
             name='external_system',
-            field=models.ForeignKey(to='nsync.ExternalSystem'),
+            field=models.ForeignKey(to='nsync.ExternalSystem', on_delete=models.CASCADE),
         ),
         migrations.AlterUniqueTogether(
             name='externalkeymapping',
